@@ -1,0 +1,131 @@
+# =====================================================================================
+# CHẠY TOÀN BỘ hệ thống trong Docker (hạ tầng + 6 service).
+#
+# Bước 1 (BẮT BUỘC): build jar trước
+#     mvn -f pom.xml clean package -DskipTests
+# Bước 2:
+#     docker compose -f docker-compose.full.yml up --build
+#
+# (Muốn chạy service bằng `mvn spring-boot:run` trên host thay vì container,
+#  dùng docker-compose.yml — chỉ bật Postgres + Kafka.)
+#
+# Override cấu hình qua biến môi trường (Spring relaxed binding):
+#   SPRING_DATASOURCE_URL -> spring.datasource.url
+#   EUREKA_URL / KAFKA_BROKERS -> placeholder trong application.yml
+# =====================================================================================
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "123456"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+      - kinderland-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  kafka:
+    image: bitnami/kafka:3.7
+    environment:
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
+      - KAFKA_CFG_LISTENERS=EXTERNAL://:9092,INTERNAL://:29092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=EXTERNAL://localhost:9092,INTERNAL://kafka:29092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    ports:
+      - "9092:9092"
+
+  eureka-server:
+    build: ./eureka-server
+    ports:
+      - "8761:8761"
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-ThisIsADevSecretChangeMeToALongRandomValue123456}
+    depends_on:
+      - eureka-server
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_auth_db
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      KAFKA_BROKERS: kafka:29092
+      JWT_SECRET: ${JWT_SECRET:-ThisIsADevSecretChangeMeToALongRandomValue123456}
+      JWT_EXPIRATION: "3600000"
+      JWT_REFRESH_EXPIRATION: "604800000"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      kafka:
+        condition: service_started
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_product_db
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      kafka:
+        condition: service_started
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_order_db
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      KAFKA_BROKERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      kafka:
+        condition: service_started
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_URL: http://eureka-server:8761/eureka/
+      KAFKA_BROKERS: kafka:29092
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASS: ${MAIL_PASS:-}
+    depends_on:
+      eureka-server:
+        condition: service_started
+      kafka:
+        condition: service_started
+
+volumes:
+  kinderland-pgdata:

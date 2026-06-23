@@ -1,0 +1,22 @@
+# Maven build output
+target/
+
+# Biến môi trường / secrets (mỗi service đọc optional:file:.env)
+.env
+.env.properties
+*.env.local
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

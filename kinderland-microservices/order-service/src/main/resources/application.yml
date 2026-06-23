@@ -1,0 +1,56 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: order-service   # khớp route lb://ORDER-SERVICE ở Gateway
+  config:
+    import: optional:file:.env[.properties]
+
+  # ----- Database RIÊNG của order-service -----
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kinderland_order_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ----- Kafka producer: bắn OrderCreatedEvent để Product trừ kho (Saga async) -----
+  cloud:
+    stream:
+      bindings:
+        orderCreated-out-0:
+          destination: order-events
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# ----- OpenFeign: timeout gọi Product Service -----
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 3000
+        read-timeout: 5000
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

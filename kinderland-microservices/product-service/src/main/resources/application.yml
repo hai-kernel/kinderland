@@ -1,0 +1,51 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: product-service   # khớp route lb://PRODUCT-SERVICE ở Gateway
+  config:
+    import: optional:file:.env[.properties]
+
+  # ----- Database RIÊNG của product-service -----
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kinderland_product_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ----- Kafka consumer: trừ kho khi nhận order-events (Saga async) -----
+  cloud:
+    function:
+      definition: orderCreated          # tên bean Consumer
+    stream:
+      bindings:
+        orderCreated-in-0:
+          destination: order-events     # topic do order-service publish
+          group: product-service
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
