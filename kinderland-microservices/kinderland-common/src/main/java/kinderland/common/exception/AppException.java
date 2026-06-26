@@ -21,4 +21,9 @@ public class AppException extends RuntimeException {
         this.errorCode = errorCode;
         this.args = args;
     }
+
+    public AppException(ErrorCode errorCode, Throwable cause) {
+        super(errorCode.getMessage(), cause);
+        this.errorCode = errorCode;
+    }
 }

@@ -56,6 +56,15 @@ public enum ErrorCode {
     OUT_OF_STOCK("Sản phẩm không đủ tồn kho", HttpStatus.CONFLICT),
     CATEGORY_NOT_FOUND("Danh mục không tồn tại", HttpStatus.NOT_FOUND),
     ORDER_NOT_FOUND("Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
+    // Bổ sung cho auth-service
+    REFRESH_TOKEN_REQUIRED("Refresh token is required", HttpStatus.BAD_REQUEST),
+    GOOGLE_ID_TOKEN_REQUIRED("Google id token is required", HttpStatus.BAD_REQUEST),
+    INVALID_GOOGLE_ID_TOKEN("Invalid Google ID token", HttpStatus.UNAUTHORIZED),
+    GOOGLE_TOKEN_VERIFICATION_FAILED("Google token verification failed", HttpStatus.UNAUTHORIZED),
+    EMAIL_NOT_FOUND("Email không tồn tại trong hệ thống.", HttpStatus.NOT_FOUND),
+    INVALID_OTP("Mã OTP không hợp lệ.", HttpStatus.BAD_REQUEST),
+    OTP_EXPIRED("Mã OTP đã hết hạn.", HttpStatus.BAD_REQUEST),
+    INVALID_REFRESH_TOKEN("Invalid refresh token", HttpStatus.UNAUTHORIZED),
     ;
 
     ErrorCode(String message, HttpStatus statusCode) {

@@ -30,6 +30,8 @@ import kinderland.auth.repo.AccountRepository;
 import kinderland.auth.repo.TokenBlacklistRepository;
 import kinderland.auth.security.JwtUtil;
 import kinderland.auth.service.AccountService;
+import kinderland.common.exception.AppException;
+import kinderland.common.exception.ErrorCode;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -60,13 +62,13 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public void registerAccount(RegisterRequest request) {
         if (accountRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("USERNAME_EXISTS");
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTED);
         }
         if (accountRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("EMAIL_EXISTS");
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTED);
         }
         if (accountRepository.existsByPhone(request.getPhone())) {
-            throw new RuntimeException("PHONE_EXISTS");
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTED);
         }
 
         Account account = Account.builder()
@@ -112,7 +114,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AuthResponse refreshAccessToken(String refreshToken) {
         if (refreshToken == null || refreshToken.isBlank()) {
-            throw new RuntimeException("Refresh token is required");
+            throw new AppException(ErrorCode.REFRESH_TOKEN_REQUIRED);
         }
 
         String newAccessToken = jwtUtil.generateAccessTokenFromRefreshToken(refreshToken);
@@ -125,7 +127,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AuthResponse loginWithGoogle(String idToken) {
         if (idToken == null || idToken.isBlank()) {
-            throw new RuntimeException("Google id token is required");
+            throw new AppException(ErrorCode.GOOGLE_ID_TOKEN_REQUIRED);
         }
 
         GoogleIdToken.Payload payload = verifyGoogleToken(idToken);
@@ -146,7 +148,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public void logout(String token) {
         if (token == null || token.isBlank()) {
-            throw new RuntimeException("Invalid token");
+            throw new AppException(ErrorCode.INVALID_TOKEN);
         }
 
         TokenBlacklist blacklist = TokenBlacklist.builder()
@@ -166,11 +168,11 @@ public class AccountServiceImpl implements AccountService {
 
             GoogleIdToken idToken = verifier.verify(idTokenString);
             if (idToken == null) {
-                throw new RuntimeException("Invalid Google ID token");
+                throw new AppException(ErrorCode.INVALID_GOOGLE_ID_TOKEN);
             }
             return idToken.getPayload();
         } catch (GeneralSecurityException | IOException e) {
-            throw new RuntimeException("Google token verification failed", e);
+            throw new AppException(ErrorCode.GOOGLE_TOKEN_VERIFICATION_FAILED, e);
         }
     }
 
@@ -215,13 +217,13 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public UserResponse createAccountByAdmin(CreateAccountRequest request) {
         if (accountRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("USERNAME_EXISTS");
+            throw new AppException(ErrorCode.USERNAME_ALREADY_EXISTED);
         }
         if (accountRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("EMAIL_EXISTS");
+            throw new AppException(ErrorCode.EMAIL_ALREADY_EXISTED);
         }
         if (accountRepository.existsByPhone(request.getPhone())) {
-            throw new RuntimeException("PHONE_EXISTS");
+            throw new AppException(ErrorCode.PHONE_ALREADY_EXISTED);
         }
 
         Account account = Account.builder()
@@ -247,7 +249,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public void deleteAccount(Long id) {
         Account account = accountRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("ACCOUNT_NOT_FOUND"));
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         accountRepository.delete(account);
     }
@@ -256,7 +258,7 @@ public class AccountServiceImpl implements AccountService {
     @Async
     public void forgetPassword(String email) {
         Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("EMAIL_NOT_FOUND"));
+                .orElseThrow(() -> new AppException(ErrorCode.EMAIL_NOT_FOUND));
 
         String otp = generateOtp();
 
@@ -271,14 +273,14 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public void resetPasswordWithOtp(String email, String otp, String newPassword) {
         Account account = accountRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("ACCOUNT_NOT_FOUND"));
+                .orElseThrow(() -> new AppException(ErrorCode.ACCOUNT_NOT_FOUND));
 
         if (account.getResetOtp() == null || !account.getResetOtp().equals(otp)) {
-            throw new RuntimeException("INVALID_OTP");
+            throw new AppException(ErrorCode.INVALID_OTP);
         }
 
         if (account.getResetOtpExpiry().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("OTP_EXPIRED");
+            throw new AppException(ErrorCode.OTP_EXPIRED);
         }
 
         account.setPassword(passwordEncoder.encode(newPassword));

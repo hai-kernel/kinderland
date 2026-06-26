@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import kinderland.common.exception.AppException;
+import kinderland.common.exception.ErrorCode;
 
 /**
  * Sinh & đọc JWT. CHỈ còn ở auth-service (service duy nhất phát hành token).
@@ -65,7 +67,7 @@ public class JwtUtil {
 
     public String generateAccessTokenFromRefreshToken(String refreshToken) {
         if (!validateRefreshToken(refreshToken)) {
-            throw new RuntimeException("Invalid refresh token");
+            throw new AppException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
         return generateToken(getEmailFromToken(refreshToken), getRoleFromToken(refreshToken));
     }
