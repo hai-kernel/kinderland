@@ -1,0 +1,242 @@
+{
+  "info": {
+    "_postman_id": "kinderland-all-services-v1",
+    "name": "Kinderland — All Services",
+    "description": "Combined collection: Auth Service + Product Service + Notification Service.\n\nSetup:\n1. Run Login (Admin) or Login (Customer) first.\n2. accessToken and refreshToken are auto-saved.\n3. All protected endpoints use {{accessToken}} automatically.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "?? Auth",
+      "item": [
+        {
+          "name": "Login (Admin)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.accessToken){pm.collectionVariables.set('accessToken',j.data.accessToken);pm.collectionVariables.set('refreshToken',j.data.refreshToken);}pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"admin@kinderland.vn\",\n  \"password\": \"Admin@123\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/login","host":["{{baseUrl}}"],"path":["api","v1","auth","login"]}}
+        },
+        {
+          "name": "Login (Customer)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.accessToken){pm.collectionVariables.set('accessToken',j.data.accessToken);pm.collectionVariables.set('refreshToken',j.data.refreshToken);}pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"customer@kinderland.vn\",\n  \"password\": \"Customer@123\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/login","host":["{{baseUrl}}"],"path":["api","v1","auth","login"]}}
+        },
+        {
+          "name": "Register New Account",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 201',()=>pm.response.to.have.status(201));pm.test('isSuccess true',()=>pm.expect(pm.response.json().isSuccess).to.be.true);"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"username\": \"testuser01\",\n  \"email\": \"testuser01@example.com\",\n  \"password\": \"Test@1234\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"phone\": \"0901234567\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/register","host":["{{baseUrl}}"],"path":["api","v1","auth","register"]}}
+        },
+        {
+          "name": "Login — Wrong Password (expect 401)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 401',()=>pm.response.to.have.status(401));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"admin@kinderland.vn\",\n  \"password\": \"wrongpassword\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/login","host":["{{baseUrl}}"],"path":["api","v1","auth","login"]}}
+        },
+        {
+          "name": "Refresh Token",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.accessToken){pm.collectionVariables.set('accessToken',j.data.accessToken);}pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/refresh","host":["{{baseUrl}}"],"path":["api","v1","auth","refresh"]}}
+        },
+        {
+          "name": "Forgot Password (send OTP)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"customer@kinderland.vn\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/forgot-password","host":["{{baseUrl}}"],"path":["api","v1","auth","forgot-password"]}}
+        },
+        {
+          "name": "Reset Password with OTP",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"customer@kinderland.vn\",\n  \"otp\": \"123456\",\n  \"newPassword\": \"NewPass@123\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/reset-password","host":["{{baseUrl}}"],"path":["api","v1","auth","reset-password"]}}
+        },
+        {
+          "name": "Logout",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));pm.collectionVariables.set('accessToken','');pm.collectionVariables.set('refreshToken','');"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/auth/logout","host":["{{baseUrl}}"],"path":["api","v1","auth","logout"]}}
+        }
+      ]
+    },
+    {
+      "name": "?? Account (Profile)",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));pm.test('Has data',()=>pm.expect(pm.response.json().data).to.not.be.null);"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/account/me","host":["{{baseUrl}}"],"path":["api","v1","account","me"]}}
+        },
+        {
+          "name": "Get My Profile — No Token (expect 401)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 401',()=>pm.response.to.have.status(401));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/account/me","host":["{{baseUrl}}"],"path":["api","v1","account","me"]}}
+        },
+        {
+          "name": "Update Profile",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Name\",\n  \"phone\": \"0987654321\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/account/update-profile","host":["{{baseUrl}}"],"path":["api","v1","account","update-profile"]}}
+        },
+        {
+          "name": "Change Password",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"currentPassword\": \"Customer@123\",\n  \"newPassword\": \"NewPass@456\",\n  \"confirmPassword\": \"NewPass@456\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/account/change-password","host":["{{baseUrl}}"],"path":["api","v1","account","change-password"]}}
+        }
+      ]
+    },
+    {
+      "name": "?? Address",
+      "item": [
+        {
+          "name": "Get My Addresses",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/address/my-addresses","host":["{{baseUrl}}"],"path":["api","v1","address","my-addresses"]}}
+        },
+        {
+          "name": "Create Address",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.addressId){pm.collectionVariables.set('addressId',String(j.data.addressId));console.log('?? addressId saved:',j.data.addressId);}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"street\": \"123 Le Loi\",\n  \"provinceId\": 202,\n  \"provinceName\": \"TP. Ho Chi Minh\",\n  \"districtId\": 1452,\n  \"districtName\": \"Quan 1\",\n  \"wardId\": 20211,\n  \"wardName\": \"Phuong Ben Nghe\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/address/create","host":["{{baseUrl}}"],"path":["api","v1","address","create"]}}
+        },
+        {
+          "name": "Update Address",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"PUT","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"street\": \"456 Nguyen Hue\",\n  \"provinceId\": 202,\n  \"provinceName\": \"TP. Ho Chi Minh\",\n  \"districtId\": 1452,\n  \"districtName\": \"Quan 1\",\n  \"wardId\": 20211,\n  \"wardName\": \"Phuong Ben Nghe\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/address/update/{{addressId}}","host":["{{baseUrl}}"],"path":["api","v1","address","update","{{addressId}}"]}}
+        },
+        {
+          "name": "Delete Address",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/address/delete/{{addressId}}","host":["{{baseUrl}}"],"path":["api","v1","address","delete","{{addressId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "??? Admin — Accounts",
+      "item": [
+        {
+          "name": "Get All Accounts (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));pm.test('Data is array',()=>pm.expect(pm.response.json().data).to.be.an('array'));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/admin/accounts","host":["{{baseUrl}}"],"path":["api","v1","admin","accounts"]}}
+        },
+        {
+          "name": "Create Account (Admin)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.id){pm.collectionVariables.set('accountId',String(j.data.id));}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"username\": \"manager03\",\n  \"email\": \"manager03@example.com\",\n  \"phone\": \"0999999997\",\n  \"password\": \"Manager@123\",\n  \"firstName\": \"Store\",\n  \"lastName\": \"Manager\",\n  \"role\": \"MANAGER\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/admin/accounts/create","host":["{{baseUrl}}"],"path":["api","v1","admin","accounts","create"]}}
+        },
+        {
+          "name": "Delete Account (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/admin/accounts/delete/{{accountId}}","host":["{{baseUrl}}"],"path":["api","v1","admin","accounts","delete","{{accountId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "??? Category (Product Service)",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));pm.test('Data is array',()=>pm.expect(pm.response.json().data).to.be.an('array'));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/categories","host":["{{baseUrl}}"],"path":["api","v1","categories"]}}
+        },
+        {
+          "name": "Get Category By ID",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/categories/{{categoryId}}","host":["{{baseUrl}}"],"path":["api","v1","categories","{{categoryId}}"]}}
+        },
+        {
+          "name": "Create Category (Admin)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.id){pm.collectionVariables.set('categoryId',String(j.data.id));console.log('??? categoryId saved:',j.data.id);}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Do choi tre em\",\n  \"parentId\": null\n}"},"url":{"raw":"{{baseUrl}}/api/v1/categories","host":["{{baseUrl}}"],"path":["api","v1","categories"]}}
+        },
+        {
+          "name": "Create Sub-Category (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Do choi xep hinh\",\n  \"parentId\": {{categoryId}}\n}"},"url":{"raw":"{{baseUrl}}/api/v1/categories","host":["{{baseUrl}}"],"path":["api","v1","categories"]}}
+        },
+        {
+          "name": "Update Category (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"PUT","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Do choi tre em (Updated)\",\n  \"parentId\": null\n}"},"url":{"raw":"{{baseUrl}}/api/v1/categories/{{categoryId}}","host":["{{baseUrl}}"],"path":["api","v1","categories","{{categoryId}}"]}}
+        },
+        {
+          "name": "Delete Category (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/categories/{{categoryId}}","host":["{{baseUrl}}"],"path":["api","v1","categories","{{categoryId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "?? Product (Product Service)",
+      "item": [
+        {
+          "name": "Get All Products",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));pm.test('Data is array',()=>pm.expect(pm.response.json().data).to.be.an('array'));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
+        },
+        {
+          "name": "Get Product By ID",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));pm.test('Has data',()=>pm.expect(pm.response.json().data).to.not.be.null);"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/products/{{productId}}","host":["{{baseUrl}}"],"path":["api","v1","products","{{productId}}"]}}
+        },
+        {
+          "name": "Get Product By ID — Not Found (expect 404)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 404',()=>pm.response.to.have.status(404));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/products/99999","host":["{{baseUrl}}"],"path":["api","v1","products","99999"]}}
+        },
+        {
+          "name": "Create Product (Admin)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.id){pm.collectionVariables.set('productId',String(j.data.id));console.log('?? productId saved:',j.data.id);}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Bo xep hinh 100 manh\",\n  \"description\": \"Bo xep hinh phat trien tri tue cho tre 3-8 tuoi\",\n  \"ageRange\": \"3-8\",\n  \"gender\": \"UNISEX\",\n  \"price\": 150000,\n  \"stockQuantity\": 50,\n  \"categoryId\": {{categoryId}}\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
+        },
+        {
+          "name": "Create Product — Missing Name (expect 400)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 400',()=>pm.response.to.have.status(400));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"\",\n  \"price\": 150000,\n  \"stockQuantity\": 50\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
+        },
+        {
+          "name": "Create Product — No Token (expect 401)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 401',()=>pm.response.to.have.status(401));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Test\",\n  \"price\": 100000,\n  \"stockQuantity\": 10\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
+        },
+        {
+          "name": "Update Product (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"PUT","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Bo xep hinh 100 manh (Updated)\",\n  \"description\": \"Cap nhat mo ta\",\n  \"ageRange\": \"4-10\",\n  \"gender\": \"UNISEX\",\n  \"price\": 175000,\n  \"stockQuantity\": 40,\n  \"categoryId\": {{categoryId}}\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products/{{productId}}","host":["{{baseUrl}}"],"path":["api","v1","products","{{productId}}"]}}
+        },
+        {
+          "name": "Delete Product (Admin)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/products/{{productId}}","host":["{{baseUrl}}"],"path":["api","v1","products","{{productId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "?? Notification Service — Health",
+      "item": [
+        {
+          "name": "Health Check (notification-service direct)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Service is UP',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{notificationUrl}}/actuator/health","host":["{{notificationUrl}}"],"path":["actuator","health"]}}
+        },
+        {
+          "name": "Health Check (product-service direct)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Service is UP',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{productUrl}}/actuator/health","host":["{{productUrl}}"],"path":["actuator","health"]}}
+        },
+        {
+          "name": "Health Check (auth-service direct)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Service is UP',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"GET","header":[],"url":{"raw":"{{authUrl}}/actuator/health","host":["{{authUrl}}"],"path":["actuator","health"]}}
+        },
+        {
+          "name": "Trigger Welcome Email (Register + Check Kafka Flow)",
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 201 — event published to Kafka',()=>pm.response.to.have.status(201));pm.test('Check notification-service log for welcome email',()=>pm.expect(true).to.be.true);"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"username\": \"kafkatest01\",\n  \"email\": \"your-test-email@gmail.com\",\n  \"password\": \"Test@1234\",\n  \"firstName\": \"Kafka\",\n  \"lastName\": \"Test\",\n  \"phone\": \"0911000111\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/register","host":["{{baseUrl}}"],"path":["api","v1","auth","register"]}}
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key":"baseUrl","value":"http://localhost:8080","type":"string"},
+    {"key":"authUrl","value":"http://localhost:8081","type":"string"},
+    {"key":"productUrl","value":"http://localhost:8082","type":"string"},
+    {"key":"notificationUrl","value":"http://localhost:8084","type":"string"},
+    {"key":"accessToken","value":"","type":"string"},
+    {"key":"refreshToken","value":"","type":"string"},
+    {"key":"addressId","value":"1","type":"string"},
+    {"key":"accountId","value":"1","type":"string"},
+    {"key":"categoryId","value":"1","type":"string"},
+    {"key":"productId","value":"1","type":"string"}
+  ]
+}

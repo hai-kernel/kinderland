@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import kinderland.common.dto.BaseResponse;
 import kinderland.product.model.dto.request.CategoryRequest;
@@ -31,17 +32,20 @@ public class CategoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BaseResponse<CategoryResponse>> create(@Valid @RequestBody CategoryRequest request, HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(BaseResponse.ok(201, req.getRequestURI(), "Created", categoryService.create(request)));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BaseResponse<CategoryResponse>> update(@PathVariable Long id, @Valid @RequestBody CategoryRequest request, HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Updated", categoryService.update(id, request)));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BaseResponse<Void>> delete(@PathVariable Long id, HttpServletRequest req) {
         categoryService.delete(id);
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Deleted", null));

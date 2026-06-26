@@ -49,8 +49,7 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     /**
-     * Danh sách path KHÔNG yêu cầu đăng nhập.
-     * Lấy đúng theo cấu hình permitAll() của monolith (WebSecurityConfig) để hành vi không đổi.
+     * Danh sách path KHÔNG yêu cầu đăng nhập (công khai cho mọi HTTP method).
      */
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/v1/auth/**",
@@ -58,16 +57,21 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
+            "/api/v1/payment/vnpay-return",
+            "/api/v1/payment/verify-vnpay"
+    );
+
+    /**
+     * Danh sách path CHỈ công khai với HTTP GET (cho phép xem danh sách/chi tiết không cần đăng nhập).
+     * Các method khác (POST, PUT, DELETE, PATCH...) BẮT BUỘC phải có token xác thực.
+     */
+    private static final List<String> PUBLIC_GET_PATHS = List.of(
             "/api/v1/categories/**",
             "/api/v1/inventory/**",
             "/api/v1/brands/**",
             "/api/v1/sku/**",
             "/api/v1/stores/**",
             "/api/v1/products/**",
-            "/api/v1/orders/**",
-            "/api/v1/cart/**",
-            "/api/v1/payment/vnpay-return",
-            "/api/v1/payment/verify-vnpay",
             "/api/v1/financial/**",
             "/api/v1/blogs/**",
             "/api/v1/blog-categories/**",
@@ -95,13 +99,13 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
                 email = claims.getSubject();
                 role = claims.get("role", String.class);
             } catch (Exception e) {
-                log.warn("JWT không hợp lệ cho path {}: {}", path, e.getMessage());
-                if (!isPublic(path)) {
-                    return unauthorized(exchange, "Token không hợp lệ hoặc đã hết hạn");
+                log.warn("Invalid JWT token for path {}: {}", path, e.getMessage());
+                if (!isPublic(path, request.getMethod())) {
+                    return unauthorized(exchange, path, "Invalid or expired token");
                 }
             }
-        } else if (!isPublic(path)) {
-            return unauthorized(exchange, "Thiếu Authorization token");
+        } else if (!isPublic(path, request.getMethod())) {
+            return unauthorized(exchange, path, "Authentication token is required to access this resource");
         }
 
         final String authedEmail = email;
@@ -123,8 +127,14 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange.mutate().request(mutatedRequest).build());
     }
 
-    private boolean isPublic(String path) {
-        return PUBLIC_PATHS.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+    private boolean isPublic(String path, HttpMethod method) {
+        if (PUBLIC_PATHS.stream().anyMatch(pattern -> pathMatcher.match(pattern, path))) {
+            return true;
+        }
+        if (method == HttpMethod.GET && PUBLIC_GET_PATHS.stream().anyMatch(pattern -> pathMatcher.match(pattern, path))) {
+            return true;
+        }
+        return false;
     }
 
     private String resolveToken(ServerHttpRequest request) {
@@ -135,11 +145,15 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
         return null;
     }
 
-    private Mono<Void> unauthorized(ServerWebExchange exchange, String message) {
+    private Mono<Void> unauthorized(ServerWebExchange exchange, String path, String message) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        String body = "{\"status\":401,\"message\":\"" + message + "\",\"data\":null}";
+        String timestamp = java.time.Instant.now().toString();
+        String body = String.format(
+                "{\"timestamp\":\"%s\",\"statusCode\":401,\"apiPath\":\"%s\",\"isSuccess\":false,\"message\":\"%s\",\"data\":null}",
+                timestamp, path, message
+        );
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
     }

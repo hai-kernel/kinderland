@@ -40,11 +40,11 @@ public class OrderController {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", orderService.getById(id, currentEmail())));
     }
 
-    /** Email do Gateway gắn vào header sau khi verify JWT. Bắt buộc đăng nhập cho thao tác đơn hàng. */
+    /** Email injected by the API Gateway after JWT verification. Login is required for all order operations. */
     private String currentEmail() {
         String email = GatewayAuthContext.getCurrentEmail();
         if (email == null) {
-            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+            throw new AppException(ErrorCode.MISSING_TOKEN);
         }
         return email;
     }

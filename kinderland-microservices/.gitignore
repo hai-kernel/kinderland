@@ -5,6 +5,7 @@ target/
 .env
 .env.properties
 *.env.local
+.env.example
 
 # IDE
 .idea/

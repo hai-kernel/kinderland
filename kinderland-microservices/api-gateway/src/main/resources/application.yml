@@ -25,13 +25,13 @@ spring:
             - id: product-service
               uri: lb://PRODUCT-SERVICE
               predicates:
-                - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/cart/**,/api/v1/wishlist/**,/api/v1/transfer/**
+                - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
 
             # ---------- ORDER SERVICE (8083) ----------
             - id: order-service
               uri: lb://ORDER-SERVICE
               predicates:
-                - Path=/api/v1/orders/**,/api/v1/payment/**,/api/v1/financial/**,/api/v1/loyalty/**,/api/v1/return-requests/**
+                - Path=/api/v1/orders/**,/api/v1/cart/**,/api/v1/payment/**,/api/v1/financial/**,/api/v1/loyalty/**,/api/v1/return-requests/**
 
 # Đăng ký Gateway vào Eureka để dùng được uri lb://SERVICE-NAME
 eureka:

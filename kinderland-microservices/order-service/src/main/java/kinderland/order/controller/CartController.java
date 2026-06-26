@@ -39,7 +39,7 @@ public class CartController {
     private String currentEmail() {
         String email = GatewayAuthContext.getCurrentEmail();
         if (email == null) {
-            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+            throw new AppException(ErrorCode.MISSING_TOKEN);
         }
         return email;
     }

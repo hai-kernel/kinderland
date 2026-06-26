@@ -27,7 +27,13 @@ public class EmailNotificationService {
             message.setText("""
                     Xin chào %s,
 
-                    Tài khoản của bạn đã được tạo thành công tại Kinderland.
+                    Tài khoản của bạn đã được tạo thành công tại Kinderland. Chào mừng bạn gia nhập cộng đồng của chúng tôi!
+
+                    🔐 HƯỚNG DẪN ĐĂNG NHẬP LẦN ĐẦU (Dành cho tài khoản được Quản trị viên tạo):
+                    1. Truy cập trang đăng nhập: http://localhost:5173/login
+                    2. Bấm vào "Quên mật khẩu" (Forgot Password) và nhập email của bạn.
+                    3. Nhập mã OTP được gửi đến email này để thiết lập mật khẩu cá nhân bảo mật của riêng bạn.
+
                     Chúc bạn mua sắm vui vẻ!
 
                     — Kinderland Team
