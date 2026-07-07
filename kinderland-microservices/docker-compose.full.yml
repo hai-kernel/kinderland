@@ -28,6 +28,11 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   kafka:
     image: bitnami/kafka:3.7
     environment:
@@ -56,8 +61,10 @@ services:
     environment:
       EUREKA_URL: http://eureka-server:8761/eureka/
       JWT_SECRET: ${JWT_SECRET:-ThisIsADevSecretChangeMeToALongRandomValue123456}
+      REDIS_HOST: redis
     depends_on:
       - eureka-server
+      - redis
 
   auth-service:
     build: ./auth-service
@@ -73,12 +80,15 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-dummy-client-id}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASS: ${MAIL_PASS:-}
+      REDIS_HOST: redis
     depends_on:
       postgres:
         condition: service_healthy
       eureka-server:
         condition: service_started
       kafka:
+        condition: service_started
+      redis:
         condition: service_started
 
   product-service:

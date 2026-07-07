@@ -36,6 +36,12 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Redis REACTIVE: Gateway là WebFlux nên dùng bản reactive để check blacklist không block -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis-reactive</artifactId>
+        </dependency>
+
         <!-- jjwt: dùng để validate token tại Gateway (cùng version & secret với auth-service) -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

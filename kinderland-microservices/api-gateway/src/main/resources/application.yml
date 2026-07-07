@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: api-gateway
+  # ----- Redis: đọc token blacklist (auth-service ghi vào khi logout) -----
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   cloud:
     gateway:
       # LƯU Ý 2025.0.0: cấu hình route nằm dưới 'server.webflux'

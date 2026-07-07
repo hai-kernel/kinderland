@@ -19,6 +19,14 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    container_name: kinderland-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - kinderland-redisdata:/data
+
   kafka:
     image: apache/kafka:latest
     container_name: kinderland-kafka
@@ -42,3 +50,4 @@ services:
 volumes:
   kinderland-pgdata:
   kinderland-kafkadata:
+  kinderland-redisdata:

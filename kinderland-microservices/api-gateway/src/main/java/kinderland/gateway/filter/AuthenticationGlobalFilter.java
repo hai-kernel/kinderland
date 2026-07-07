@@ -18,6 +18,7 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import kinderland.gateway.security.JwtService;
+import kinderland.gateway.security.TokenBlacklistChecker;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -46,6 +47,7 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final TokenBlacklistChecker tokenBlacklistChecker;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     /**
@@ -83,43 +85,66 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        HttpMethod method = request.getMethod();
 
         // Preflight CORS không mang token -> luôn cho qua (CorsWebFilter sẽ xử lý).
-        if (request.getMethod() == HttpMethod.OPTIONS) {
+        if (method == HttpMethod.OPTIONS) {
             return chain.filter(exchange);
         }
 
         String token = resolveToken(request);
-        String email = null;
-        String role = null;
 
-        if (token != null) {
-            try {
-                Claims claims = jwtService.parseAccessToken(token);
-                email = claims.getSubject();
-                role = claims.get("role", String.class);
-            } catch (Exception e) {
-                log.warn("Invalid JWT token for path {}: {}", path, e.getMessage());
-                if (!isPublic(path, request.getMethod())) {
-                    return unauthorized(exchange, path, "Invalid or expired token");
-                }
+        // Không có token: chặn nếu path cần đăng nhập, ngược lại cho qua dạng ẩn danh.
+        if (token == null) {
+            if (!isPublic(path, method)) {
+                return unauthorized(exchange, path, "Authentication token is required to access this resource");
             }
-        } else if (!isPublic(path, request.getMethod())) {
-            return unauthorized(exchange, path, "Authentication token is required to access this resource");
+            return forward(exchange, chain, null, null);
         }
 
-        final String authedEmail = email;
-        final String authedRole = role;
-        ServerHttpRequest mutatedRequest = request.mutate()
+        // Có token: verify chữ ký / hạn / đúng loại access token.
+        Claims claims;
+        try {
+            claims = jwtService.parseAccessToken(token);
+        } catch (Exception e) {
+            log.warn("Invalid JWT token for path {}: {}", path, e.getMessage());
+            if (!isPublic(path, method)) {
+                return unauthorized(exchange, path, "Invalid or expired token");
+            }
+            return forward(exchange, chain, null, null);
+        }
+
+        String email = claims.getSubject();
+        String role = claims.get("role", String.class);
+
+        // Chữ ký hợp lệ CHƯA đủ: token có thể đã bị thu hồi (user đã logout) -> hỏi Redis blacklist.
+        return tokenBlacklistChecker.isBlacklisted(token).flatMap(blacklisted -> {
+            if (blacklisted) {
+                log.warn("Rejected blacklisted (logged-out) token for path {}", path);
+                if (!isPublic(path, method)) {
+                    return unauthorized(exchange, path, "Token has been revoked");
+                }
+                return forward(exchange, chain, null, null);
+            }
+            return forward(exchange, chain, email, role);
+        });
+    }
+
+    /**
+     * Gắn (hoặc xoá) header danh tính rồi chuyển request xuống service phía sau.
+     * email/role = null nghĩa là request ẩn danh (public path không/ hết hiệu lực token).
+     */
+    private Mono<Void> forward(ServerWebExchange exchange, GatewayFilterChain chain, String email, String role) {
+        ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                 .headers(headers -> {
                     // Chống giả mạo: xoá header client tự gửi rồi mới gắn lại từ token đã verify.
                     headers.remove(HEADER_EMAIL);
                     headers.remove(HEADER_ROLE);
-                    if (authedEmail != null) {
-                        headers.add(HEADER_EMAIL, authedEmail);
+                    if (email != null) {
+                        headers.add(HEADER_EMAIL, email);
                     }
-                    if (authedRole != null) {
-                        headers.add(HEADER_ROLE, authedRole);
+                    if (role != null) {
+                        headers.add(HEADER_ROLE, role);
                     }
                 })
                 .build();

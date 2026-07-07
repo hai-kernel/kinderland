@@ -25,11 +25,10 @@ import kinderland.auth.model.dto.request.RegisterRequest;
 import kinderland.auth.model.dto.response.AuthResponse;
 import kinderland.auth.model.dto.response.UserResponse;
 import kinderland.auth.model.entity.Account;
-import kinderland.auth.model.entity.TokenBlacklist;
 import kinderland.auth.repo.AccountRepository;
-import kinderland.auth.repo.TokenBlacklistRepository;
 import kinderland.auth.security.JwtUtil;
 import kinderland.auth.service.AccountService;
+import kinderland.auth.service.TokenBlacklistService;
 import kinderland.common.exception.AppException;
 import kinderland.common.exception.ErrorCode;
 
@@ -49,7 +48,7 @@ public class AccountServiceImpl implements AccountService {
     PasswordEncoder passwordEncoder;
     AuthenticationManager authenticationManager;
     JwtUtil jwtUtil;
-    TokenBlacklistRepository tokenBlacklistRepository;
+    TokenBlacklistService tokenBlacklistService;
     EmailService emailService;
     UserEventPublisher userEventPublisher;
     AccountMapper accountMapper;
@@ -151,12 +150,8 @@ public class AccountServiceImpl implements AccountService {
             throw new AppException(ErrorCode.INVALID_TOKEN);
         }
 
-        TokenBlacklist blacklist = TokenBlacklist.builder()
-                .token(token)
-                .expiredAt(LocalDateTime.now().plusHours(24))
-                .build();
-
-        tokenBlacklistRepository.save(blacklist);
+        // Ghi token vào Redis blacklist; Gateway sẽ đọc để chặn token này ngay lập tức.
+        tokenBlacklistService.blacklist(token);
     }
 
     private GoogleIdToken.Payload verifyGoogleToken(String idTokenString) {

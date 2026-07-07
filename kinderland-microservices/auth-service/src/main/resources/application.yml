@@ -20,6 +20,12 @@ spring:
       hibernate:
         format_sql: true
 
+  # ----- Redis: lưu token blacklist (dùng chung với api-gateway) -----
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   # ----- Email (gửi OTP quên mật khẩu) -----
   mail:
     host: smtp.gmail.com

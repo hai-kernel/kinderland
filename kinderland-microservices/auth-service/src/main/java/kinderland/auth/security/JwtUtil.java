@@ -80,6 +80,11 @@ public class JwtUtil {
         return getClaims(token).get("role", String.class);
     }
 
+    /** Thời điểm hết hạn của token (dùng để đặt TTL khi blacklist — token hết hạn thì tự bị xoá khỏi Redis). */
+    public java.time.Instant getExpiration(String token) {
+        return getClaims(token).getExpiration().toInstant();
+    }
+
     public boolean validateRefreshToken(String token) {
         try {
             return REFRESH_TOKEN_TYPE.equals(getClaims(token).get(TOKEN_TYPE_CLAIM, String.class));
