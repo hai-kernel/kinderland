@@ -38,6 +38,15 @@ public class PaymentController {
         return ResponseEntity.ok(Map.of("status", paymentService.verifyVnpay(vnpayParams)));
     }
 
+    /**
+     * VNPay IPN (server-to-server). VNPay gọi trực tiếp endpoint này để chốt kết quả — đáng tin hơn
+     * return-url (không phụ thuộc trình duyệt khách). Trả JSON {RspCode, Message} theo chuẩn VNPay.
+     */
+    @GetMapping("/vnpay-ipn")
+    public ResponseEntity<Map<String, String>> vnpayIpn(HttpServletRequest request) {
+        return ResponseEntity.ok(paymentService.handleVnpayIpn(kinderland.payment.util.VNPayUtils.getVNPayResponseParams(request)));
+    }
+
     /** Xem trạng thái thanh toán của một đơn (yêu cầu đăng nhập). */
     @GetMapping("/order/{orderId}")
     public ResponseEntity<BaseResponse<PaymentResponse>> getByOrder(@PathVariable Long orderId, HttpServletRequest req) {

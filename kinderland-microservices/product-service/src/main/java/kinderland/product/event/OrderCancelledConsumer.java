@@ -1,5 +1,6 @@
 package kinderland.product.event;
 
+import kinderland.product.idempotency.IdempotencyService;
 import kinderland.product.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ import java.util.function.Consumer;
 public class OrderCancelledConsumer {
 
     private final ProductService productService;
+    private final IdempotencyService idempotency;
 
     @Bean
     public Consumer<OrderCancelledEvent> orderCancelled() {
@@ -29,14 +31,14 @@ public class OrderCancelledConsumer {
             if (event.getItems() == null) {
                 return;
             }
-            event.getItems().forEach(item -> {
-                try {
-                    productService.restockStock(item.getProductId(), item.getQuantity());
-                } catch (Exception e) {
-                    log.error("Hoàn kho thất bại cho productId={} (orderId={}): {}",
-                            item.getProductId(), event.getOrderId(), e.getMessage());
-                }
-            });
+            try {
+                // Hoàn kho cả đơn trong 1 transaction + chống hoàn trùng (Kafka at-least-once).
+                idempotency.runOnce("order-cancelled:" + event.getOrderId(), () ->
+                        event.getItems().forEach(item ->
+                                productService.restockStock(item.getProductId(), item.getQuantity())));
+            } catch (Exception e) {
+                log.error("Hoàn kho thất bại (orderId={}): {}", event.getOrderId(), e.getMessage());
+            }
         };
     }
 }

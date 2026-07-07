@@ -1,5 +1,6 @@
 package kinderland.order.event;
 
+import kinderland.order.idempotency.IdempotencyService;
 import kinderland.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,13 +21,15 @@ import java.util.function.Consumer;
 public class PaymentCompletedConsumer {
 
     private final OrderService orderService;
+    private final IdempotencyService idempotency;
 
     @Bean
     public Consumer<PaymentCompletedEvent> paymentCompleted() {
         return event -> {
             log.info("Nhận PaymentCompletedEvent orderId={} → set PAID", event.getOrderId());
             try {
-                orderService.markPaid(event.getOrderId());
+                idempotency.runOnce("payment-completed:" + event.getOrderId(),
+                        () -> orderService.markPaid(event.getOrderId()));
             } catch (Exception e) {
                 log.error("Set PAID thất bại cho orderId={}: {}", event.getOrderId(), e.getMessage());
             }

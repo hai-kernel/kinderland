@@ -23,6 +23,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -135,6 +136,55 @@ public class PaymentService {
             paymentRepository.save(payment);
             return "failed";
         }
+    }
+
+    // =====================================================================
+    // 4) VNPay IPN (server-to-server) — VNPay gọi để CHỐT kết quả đáng tin cậy
+    //    (không phụ thuộc việc trình duyệt khách có quay về return-url hay không).
+    //    Trả JSON theo đúng format VNPay quy định: {RspCode, Message}.
+    // =====================================================================
+    @Transactional
+    public Map<String, String> handleVnpayIpn(Map<String, String> params) {
+        if (!VNPayUtils.verifySignature(params, vnpSecretKey)) {
+            return ipnResponse("97", "Invalid Checksum");
+        }
+
+        Payment payment;
+        try {
+            payment = paymentRepository.findByOrderId(parseOrderId(params.get("vnp_TxnRef"))).orElse(null);
+        } catch (Exception e) {
+            payment = null;
+        }
+        if (payment == null) {
+            return ipnResponse("01", "Order not found");
+        }
+
+        // Kiểm tra số tiền khớp (chống giả mạo): vnp_Amount = amount * 100.
+        try {
+            long vnpAmount = Long.parseLong(params.get("vnp_Amount"));
+            long expected = payment.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+            if (vnpAmount != expected) {
+                return ipnResponse("04", "Invalid amount");
+            }
+        } catch (Exception e) {
+            return ipnResponse("04", "Invalid amount");
+        }
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            return ipnResponse("02", "Order already confirmed");
+        }
+
+        if ("00".equals(params.get("vnp_ResponseCode"))) {
+            markSuccess(payment, params.get("vnp_TransactionNo"));
+        } else {
+            payment.setStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+        }
+        return ipnResponse("00", "Confirm Success");
+    }
+
+    private Map<String, String> ipnResponse(String code, String message) {
+        return Map.of("RspCode", code, "Message", message);
     }
 
     public PaymentResponse getByOrderId(Long orderId) {

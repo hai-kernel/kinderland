@@ -45,6 +45,11 @@ public class OrderService {
     OrderEventPublisher orderEventPublisher;
     OrderMapper orderMapper;
 
+    /** Đơn PENDING quá số phút này sẽ bị tự huỷ + hoàn kho. */
+    @org.springframework.beans.factory.annotation.Value("${order.pending-expiry-minutes:30}")
+    @lombok.experimental.NonFinal
+    int pendingExpiryMinutes;
+
     @Transactional
     public OrderResponse createOrder(String accountEmail, CreateOrderRequest request) {
         Order order = Order.builder()
@@ -161,10 +166,30 @@ public class OrderService {
         if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
         }
+        return orderMapper.toResponse(cancelAndRefund(order));
+    }
+
+    /**
+     * Tự huỷ các đơn PENDING quá hạn (khách tạo đơn nhưng không thanh toán) và HOÀN KHO.
+     * Gọi định kỳ bởi OrderExpiryScheduler. Trả về số đơn đã huỷ.
+     */
+    @Transactional
+    public int cancelExpiredPendingOrders() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(pendingExpiryMinutes);
+        List<Order> expired = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PENDING, cutoff);
+        expired.forEach(this::cancelAndRefund);
+        if (!expired.isEmpty()) {
+            log.info("Đã tự huỷ {} đơn PENDING quá hạn (>{} phút) + hoàn kho", expired.size(), pendingExpiryMinutes);
+        }
+        return expired.size();
+    }
+
+    /** Chuyển đơn sang CANCELLED + bắn event hoàn kho. Dùng chung cho huỷ thủ công và tự huỷ. */
+    private Order cancelAndRefund(Order order) {
         order.setStatus(OrderStatus.CANCELLED);
         Order saved = orderRepository.save(order);
         publishOrderCancelled(saved);   // product-service cộng kho lại
-        return orderMapper.toResponse(saved);
+        return saved;
     }
 
     private PaymentInitResponse initiatePayment(Order order, PaymentMethod method, String ipAddress) {

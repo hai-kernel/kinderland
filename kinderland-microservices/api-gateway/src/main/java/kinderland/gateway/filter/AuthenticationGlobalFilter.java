@@ -60,7 +60,8 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api/v1/payment/vnpay-return",
-            "/api/v1/payment/verify-vnpay"
+            "/api/v1/payment/verify-vnpay",
+            "/api/v1/payment/vnpay-ipn"
     );
 
     /**
