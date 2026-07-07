@@ -74,6 +74,14 @@ public class ProductService {
         return productMapper.toInternal(p);
     }
 
+    /** Cộng kho lại khi đơn bị huỷ (bù cho lần trừ kho lúc tạo đơn). */
+    @Transactional
+    public void restockStock(Long id, int quantity) {
+        Product p = findEntity(id);
+        p.setStockQuantity(p.getStockQuantity() + quantity);
+        productRepository.save(p);
+    }
+
     private Category resolveCategory(Long categoryId) {
         if (categoryId == null) {
             return null;

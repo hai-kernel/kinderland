@@ -3,3 +3,4 @@
 CREATE DATABASE kinderland_auth_db;
 CREATE DATABASE kinderland_product_db;
 CREATE DATABASE kinderland_order_db;
+CREATE DATABASE kinderland_payment_db;

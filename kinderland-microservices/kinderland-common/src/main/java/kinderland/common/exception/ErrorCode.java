@@ -56,6 +56,12 @@ public enum ErrorCode {
     OUT_OF_STOCK("Sản phẩm không đủ tồn kho", HttpStatus.CONFLICT),
     CATEGORY_NOT_FOUND("Danh mục không tồn tại", HttpStatus.NOT_FOUND),
     ORDER_NOT_FOUND("Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
+    INVALID_ORDER_STATUS("Trạng thái đơn hàng không hợp lệ cho thao tác này", HttpStatus.CONFLICT),
+    CART_ITEM_NOT_FOUND("Sản phẩm không có trong giỏ hàng", HttpStatus.NOT_FOUND),
+    // Bổ sung cho payment-service
+    PAYMENT_NOT_FOUND("Không tìm thấy thông tin thanh toán", HttpStatus.NOT_FOUND),
+    PAYMENT_ALREADY_PAID("Đơn hàng đã được thanh toán", HttpStatus.CONFLICT),
+    INVALID_PAYMENT_SIGNATURE("Chữ ký thanh toán không hợp lệ", HttpStatus.BAD_REQUEST),
     // Bổ sung cho auth-service
     REFRESH_TOKEN_REQUIRED("Refresh token is required", HttpStatus.BAD_REQUEST),
     GOOGLE_ID_TOKEN_REQUIRED("Google id token is required", HttpStatus.BAD_REQUEST),

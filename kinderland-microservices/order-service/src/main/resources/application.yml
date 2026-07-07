@@ -20,12 +20,19 @@ spring:
       hibernate:
         format_sql: true
 
-  # ----- Kafka producer: bắn OrderCreatedEvent để Product trừ kho (Saga async) -----
+  # ----- Kafka: producer (order-created, order-cancelled) + consumer (payment-completed) -----
   cloud:
+    function:
+      definition: paymentCompleted        # bean Consumer nhận event từ payment-service
     stream:
       bindings:
-        orderCreated-out-0:
+        orderCreated-out-0:               # producer: trừ kho (product-service)
           destination: order-events
+        orderCancelled-out-0:             # producer: hoàn kho khi huỷ (product-service)
+          destination: order-cancelled-events
+        paymentCompleted-in-0:            # consumer: set đơn PAID
+          destination: payment-events     # topic do payment-service publish
+          group: order-service
       kafka:
         binder:
           brokers: ${KAFKA_BROKERS:localhost:9092}

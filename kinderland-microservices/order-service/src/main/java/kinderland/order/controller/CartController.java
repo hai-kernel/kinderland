@@ -10,6 +10,7 @@ import kinderland.common.exception.AppException;
 import kinderland.common.exception.ErrorCode;
 import kinderland.common.security.GatewayAuthContext;
 import kinderland.order.model.dto.request.AddToCartRequest;
+import kinderland.order.model.dto.request.UpdateCartItemRequest;
 import kinderland.order.model.dto.response.CartResponse;
 import kinderland.order.service.CartService;
 
@@ -28,6 +29,14 @@ public class CartController {
     @PostMapping("/items")
     public ResponseEntity<BaseResponse<CartResponse>> addItem(@Valid @RequestBody AddToCartRequest request, HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã thêm vào giỏ", cartService.addToCart(currentEmail(), request)));
+    }
+
+    @PutMapping("/items/{productId}")
+    public ResponseEntity<BaseResponse<CartResponse>> updateItem(@PathVariable Long productId,
+                                                                @Valid @RequestBody UpdateCartItemRequest request,
+                                                                HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã cập nhật giỏ hàng",
+                cartService.updateItemQuantity(currentEmail(), productId, request.getQuantity())));
     }
 
     @DeleteMapping

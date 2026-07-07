@@ -10,16 +10,22 @@ import org.springframework.transaction.annotation.Transactional;
 import kinderland.common.exception.AppException;
 import kinderland.common.exception.ErrorCode;
 import kinderland.order.client.ProductClient;
+import kinderland.order.client.PaymentClient;
 import kinderland.order.client.dto.ProductInternalResponse;
+import kinderland.order.client.dto.InitiatePaymentRequest;
+import kinderland.order.client.dto.PaymentInitResponse;
 import kinderland.order.event.OrderCreatedEvent;
+import kinderland.order.event.OrderCancelledEvent;
 import kinderland.order.event.OrderEventPublisher;
 import kinderland.order.mapper.OrderMapper;
 import kinderland.order.model.dto.request.CreateOrderRequest;
 import kinderland.order.model.dto.request.OrderLineRequest;
+import kinderland.order.model.dto.response.CheckoutResponse;
 import kinderland.order.model.dto.response.OrderResponse;
 import kinderland.order.model.entity.Order;
 import kinderland.order.model.entity.OrderItem;
 import kinderland.order.model.entity.OrderStatus;
+import kinderland.order.model.entity.PaymentMethod;
 import kinderland.order.repository.OrderRepository;
 
 import java.math.BigDecimal;
@@ -35,6 +41,7 @@ public class OrderService {
 
     OrderRepository orderRepository;
     ProductClient productClient;
+    PaymentClient paymentClient;
     OrderEventPublisher orderEventPublisher;
     OrderMapper orderMapper;
 
@@ -106,12 +113,114 @@ public class OrderService {
     }
 
     public OrderResponse getById(Long id, String accountEmail) {
+        return orderMapper.toResponse(loadOwnedOrder(id, accountEmail));
+    }
+
+    /**
+     * Chủ đơn checkout: gọi payment-service (Feign) khởi tạo thanh toán.
+     * Đơn GIỮ PENDING; chỉ chuyển PAID khi nhận PaymentCompletedEvent (Kafka) từ payment-service.
+     */
+    @Transactional
+    public CheckoutResponse checkout(Long id, String accountEmail, PaymentMethod method, String ipAddress) {
+        Order order = loadOwnedOrder(id, accountEmail);
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+
+        PaymentInitResponse pay = initiatePayment(order, method, ipAddress);
+        String message = "VNPAY".equals(pay.getMethod())
+                ? "Vui lòng mở paymentUrl để thanh toán qua VNPay"
+                : "Đã ghi nhận thanh toán COD, đơn sẽ chuyển PAID";
+
+        return CheckoutResponse.builder()
+                .orderId(order.getId())
+                .paymentMethod(pay.getMethod())
+                .paymentStatus(pay.getStatus())
+                .paymentUrl(pay.getPaymentUrl())
+                .message(message)
+                .build();
+    }
+
+    /** Set đơn PAID khi payment-service báo thanh toán thành công (gọi từ Kafka consumer). Idempotent. */
+    @Transactional
+    public void markPaid(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() == OrderStatus.PENDING) {
+            order.setStatus(OrderStatus.PAID);
+            orderRepository.save(order);
+        } else {
+            log.info("Bỏ qua set PAID cho orderId={} vì trạng thái hiện tại là {}", orderId, order.getStatus());
+        }
+    }
+
+    /** Chủ đơn huỷ đơn: chỉ khi đơn chưa giao/hoàn tất và chưa bị huỷ. Bắn event để product hoàn kho. */
+    @Transactional
+    public OrderResponse cancelOrder(Long id, String accountEmail) {
+        Order order = loadOwnedOrder(id, accountEmail);
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+        order.setStatus(OrderStatus.CANCELLED);
+        Order saved = orderRepository.save(order);
+        publishOrderCancelled(saved);   // product-service cộng kho lại
+        return orderMapper.toResponse(saved);
+    }
+
+    private PaymentInitResponse initiatePayment(Order order, PaymentMethod method, String ipAddress) {
+        try {
+            return paymentClient.initiate(InitiatePaymentRequest.builder()
+                    .orderId(order.getId())
+                    .accountEmail(order.getAccountEmail())
+                    .amount(order.getTotalAmount())
+                    .method(method)
+                    .ipAddress(ipAddress)
+                    .build());
+        } catch (FeignException e) {
+            log.error("Gọi Payment Service lỗi (orderId={}): {}", order.getId(), e.getMessage());
+            throw new AppException(ErrorCode.SERVICE_UNAVAILABLE);
+        }
+    }
+
+    private void publishOrderCancelled(Order order) {
+        List<OrderCancelledEvent.Item> items = order.getItems().stream()
+                .map(i -> OrderCancelledEvent.Item.builder()
+                        .productId(i.getProductId())
+                        .quantity(i.getQuantity())
+                        .build())
+                .toList();
+
+        orderEventPublisher.publishOrderCancelled(OrderCancelledEvent.builder()
+                .orderId(order.getId())
+                .accountEmail(order.getAccountEmail())
+                .items(items)
+                .build());
+    }
+
+    /** ADMIN chuyển trạng thái đơn trong quá trình xử lý (PAID -> SHIPPING -> COMPLETED...). */
+    @Transactional
+    public OrderResponse updateStatus(Long id, OrderStatus newStatus, String role) {
+        if (!"ROLE_ADMIN".equals(role)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            // Đơn đã huỷ là trạng thái kết thúc, không chuyển tiếp được.
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+        order.setStatus(newStatus);
+        return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    /** Lấy đơn theo id và đảm bảo nó thuộc về chính user đang gọi (chống xem/sửa đơn người khác). */
+    private Order loadOwnedOrder(Long id, String accountEmail) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         if (!order.getAccountEmail().equals(accountEmail)) {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
-        return orderMapper.toResponse(order);
+        return order;
     }
 
     private ProductInternalResponse fetchProduct(Long productId) {

@@ -48,6 +48,8 @@
         <module>order-service</module>
         <!-- Bước 6: Notification Service -->
         <module>notification-service</module>
+        <!-- Bước 7: Payment Service (VNPay + COD) -->
+        <module>payment-service</module>
     </modules>
 
     <dependencyManagement>

@@ -20,14 +20,17 @@ spring:
       hibernate:
         format_sql: true
 
-  # ----- Kafka consumer: trừ kho khi nhận order-events (Saga async) -----
+  # ----- Kafka consumer: trừ kho (order-created) + hoàn kho (order-cancelled) -----
   cloud:
     function:
-      definition: orderCreated          # tên bean Consumer
+      definition: orderCreated;orderCancelled     # 2 bean Consumer
     stream:
       bindings:
         orderCreated-in-0:
-          destination: order-events     # topic do order-service publish
+          destination: order-events               # topic do order-service publish khi tạo đơn
+          group: product-service
+        orderCancelled-in-0:
+          destination: order-cancelled-events     # topic do order-service publish khi huỷ đơn
           group: product-service
       kafka:
         binder:

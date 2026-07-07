@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import kinderland.common.exception.AppException;
+import kinderland.common.exception.ErrorCode;
 import kinderland.order.mapper.CartMapper;
 import kinderland.order.model.dto.request.AddToCartRequest;
 import kinderland.order.model.dto.response.CartResponse;
@@ -41,6 +43,21 @@ public class CartService {
                     .build());
         }
 
+        return cartMapper.toResponse(cartRepository.save(cart));
+    }
+
+    /** Đặt lại số lượng của 1 sản phẩm trong giỏ (giá trị tuyệt đối). */
+    @Transactional
+    public CartResponse updateItemQuantity(String accountEmail, Long productId, int quantity) {
+        Cart cart = cartRepository.findByAccountEmail(accountEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_ITEM_NOT_FOUND));
+
+        CartItem item = cart.getItems().stream()
+                .filter(i -> i.getProductId().equals(productId))
+                .findFirst()
+                .orElseThrow(() -> new AppException(ErrorCode.CART_ITEM_NOT_FOUND));
+
+        item.setQuantity(quantity);
         return cartMapper.toResponse(cartRepository.save(cart));
     }
 
