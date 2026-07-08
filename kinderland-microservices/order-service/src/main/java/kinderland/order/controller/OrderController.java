@@ -12,6 +12,7 @@ import kinderland.common.exception.ErrorCode;
 import kinderland.common.security.GatewayAuthContext;
 import kinderland.order.model.dto.request.CheckoutRequest;
 import kinderland.order.model.dto.request.CreateOrderRequest;
+import kinderland.order.model.dto.request.FromCartRequest;
 import kinderland.order.model.dto.request.UpdateOrderStatusRequest;
 import kinderland.order.model.dto.response.CheckoutResponse;
 import kinderland.order.model.dto.response.OrderResponse;
@@ -36,6 +37,16 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<BaseResponse<List<OrderResponse>>> myOrders(HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", orderService.getMyOrders(currentEmail())));
+    }
+
+    /** Đặt hàng từ giỏ: các sản phẩm được tick (productIds) — hoặc toàn bộ giỏ nếu bỏ trống. */
+    @PostMapping("/from-cart")
+    public ResponseEntity<BaseResponse<OrderResponse>> createFromCart(@RequestBody(required = false) FromCartRequest request,
+                                                                      HttpServletRequest req) {
+        List<Long> productIds = request == null ? null : request.getProductIds();
+        OrderResponse response = orderService.createOrderFromCart(currentEmail(), productIds);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponse.ok(201, req.getRequestURI(), "Đặt hàng từ giỏ thành công", response));
     }
 
     @GetMapping("/{id}")

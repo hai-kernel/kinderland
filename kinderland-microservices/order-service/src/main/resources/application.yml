@@ -54,7 +54,7 @@ feign:
 
 # ----- Tự huỷ đơn PENDING quá hạn (khách không thanh toán) + hoàn kho -----
 order:
-  pending-expiry-minutes: 30     # đơn PENDING quá 30 phút sẽ bị huỷ
+  pending-expiry-minutes: 15     # cửa sổ giữ chỗ/retry: đơn PENDING quá 15 phút sẽ bị huỷ + hoàn kho
   expiry-scan-ms: 60000          # quét mỗi 60 giây
 
 springdoc:

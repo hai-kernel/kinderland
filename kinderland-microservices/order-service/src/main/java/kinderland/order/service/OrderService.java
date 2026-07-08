@@ -22,16 +22,21 @@ import kinderland.order.model.dto.request.CreateOrderRequest;
 import kinderland.order.model.dto.request.OrderLineRequest;
 import kinderland.order.model.dto.response.CheckoutResponse;
 import kinderland.order.model.dto.response.OrderResponse;
+import kinderland.order.model.entity.Cart;
+import kinderland.order.model.entity.CartItem;
 import kinderland.order.model.entity.Order;
 import kinderland.order.model.entity.OrderItem;
 import kinderland.order.model.entity.OrderStatus;
 import kinderland.order.model.entity.PaymentMethod;
+import kinderland.order.repository.CartRepository;
 import kinderland.order.repository.OrderRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -40,13 +45,14 @@ import java.util.List;
 public class OrderService {
 
     OrderRepository orderRepository;
+    CartRepository cartRepository;
     ProductClient productClient;
     PaymentClient paymentClient;
     OrderEventPublisher orderEventPublisher;
     OrderMapper orderMapper;
 
     /** Đơn PENDING quá số phút này sẽ bị tự huỷ + hoàn kho. */
-    @org.springframework.beans.factory.annotation.Value("${order.pending-expiry-minutes:30}")
+    @org.springframework.beans.factory.annotation.Value("${order.pending-expiry-minutes:15}")
     @lombok.experimental.NonFinal
     int pendingExpiryMinutes;
 
@@ -110,6 +116,42 @@ public class OrderService {
                 .accountEmail(order.getAccountEmail())
                 .items(eventItems)
                 .build());
+    }
+
+    /**
+     * Đặt hàng TỪ GIỎ (luồng 2): lấy các item được tick (productIds) — hoặc TOÀN BỘ giỏ nếu để trống —
+     * dựng đơn (tái dùng createOrder), rồi XOÁ đúng những item đã đặt khỏi giỏ.
+     */
+    @Transactional
+    public OrderResponse createOrderFromCart(String accountEmail, List<Long> productIds) {
+        Cart cart = cartRepository.findByAccountEmail(accountEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.CART_EMPTY));
+
+        boolean selectAll = (productIds == null || productIds.isEmpty());
+        Set<Long> wanted = selectAll ? Set.of() : new HashSet<>(productIds);
+        List<CartItem> selected = cart.getItems().stream()
+                .filter(i -> selectAll || wanted.contains(i.getProductId()))
+                .toList();
+        if (selected.isEmpty()) {
+            throw new AppException(ErrorCode.CART_EMPTY);
+        }
+
+        // Dựng CreateOrderRequest từ item đã chọn rồi tái dùng logic tạo đơn (check giá/tồn, trừ kho...).
+        CreateOrderRequest request = new CreateOrderRequest();
+        request.setItems(selected.stream().map(i -> {
+            OrderLineRequest line = new OrderLineRequest();
+            line.setProductId(i.getProductId());
+            line.setQuantity(i.getQuantity());
+            return line;
+        }).toList());
+        OrderResponse response = createOrder(accountEmail, request);
+
+        // Tạo đơn thành công -> gỡ đúng những sản phẩm đã đặt khỏi giỏ (giữ lại item chưa tick).
+        Set<Long> orderedIds = selected.stream().map(CartItem::getProductId).collect(java.util.stream.Collectors.toSet());
+        cart.getItems().removeIf(i -> orderedIds.contains(i.getProductId()));
+        cartRepository.save(cart);
+
+        return response;
     }
 
     public List<OrderResponse> getMyOrders(String accountEmail) {

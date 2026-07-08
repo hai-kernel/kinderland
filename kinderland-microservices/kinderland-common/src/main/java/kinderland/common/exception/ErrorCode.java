@@ -58,6 +58,7 @@ public enum ErrorCode {
     ORDER_NOT_FOUND("Đơn hàng không tồn tại", HttpStatus.NOT_FOUND),
     INVALID_ORDER_STATUS("Trạng thái đơn hàng không hợp lệ cho thao tác này", HttpStatus.CONFLICT),
     CART_ITEM_NOT_FOUND("Sản phẩm không có trong giỏ hàng", HttpStatus.NOT_FOUND),
+    CART_EMPTY("Giỏ hàng trống hoặc không có sản phẩm nào được chọn", HttpStatus.BAD_REQUEST),
     // Bổ sung cho payment-service
     PAYMENT_NOT_FOUND("Không tìm thấy thông tin thanh toán", HttpStatus.NOT_FOUND),
     PAYMENT_ALREADY_PAID("Đơn hàng đã được thanh toán", HttpStatus.CONFLICT),

@@ -69,6 +69,12 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
+        <!-- Actuator: endpoint /actuator/health cho giám sát (yml đã khai báo expose health,info) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Async messaging: Spring Cloud Stream + Kafka (publish UserCreatedEvent) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
