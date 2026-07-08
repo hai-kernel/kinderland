@@ -7,6 +7,12 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
+  # ----- Cho phép upload ảnh tới 10MB -----
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   # ----- Database RIÊNG của product-service -----
   datasource:
     url: jdbc:postgresql://localhost:5432/kinderland_product_db
@@ -52,3 +58,11 @@ management:
     web:
       exposure:
         include: health,info
+
+# ----- AWS S3 (lưu ảnh sản phẩm). Điền creds vào .env, KHÔNG commit. -----
+aws:
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
+  region: ${AWS_REGION:ap-southeast-1}
+  s3:
+    bucket: ${AWS_S3_BUCKET:}

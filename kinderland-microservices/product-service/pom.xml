@@ -16,6 +16,7 @@
 
     <properties>
         <springdoc.version>2.8.5</springdoc.version>
+        <aws.sdk.version>2.42.14</aws.sdk.version>
     </properties>
 
     <dependencies>
@@ -59,6 +60,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- AWS S3: lưu ảnh sản phẩm (bucket private + presigned URL). Artifact 's3' đã gồm cả presigner. -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>${aws.sdk.version}</version>
         </dependency>
 
         <!-- Kafka consumer: lắng nghe order-events để TRỪ KHO (Saga async) -->
