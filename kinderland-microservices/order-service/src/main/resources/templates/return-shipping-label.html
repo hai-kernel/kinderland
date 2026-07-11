@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Return Shipping Label - {{returnCode}}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Arial', sans-serif; padding: 20px; background: #f5f5f5; }
+        .label-container {
+            max-width: 500px; margin: 0 auto; background: white;
+            border: 3px solid #333; padding: 0;
+        }
+        .label-header {
+            background: #333; color: white; text-align: center;
+            padding: 15px; font-size: 20px; font-weight: bold;
+            letter-spacing: 2px;
+        }
+        .label-body { padding: 20px; }
+        .label-row {
+            display: flex; justify-content: space-between;
+            padding: 8px 0; border-bottom: 1px dashed #ccc;
+        }
+        .label-row:last-child { border-bottom: none; }
+        .label-key { font-weight: bold; color: #555; font-size: 13px; }
+        .label-value { font-size: 14px; text-align: right; max-width: 60%; }
+        .section-title {
+            background: #f0f0f0; padding: 8px 20px; font-weight: bold;
+            font-size: 14px; color: #333; border-top: 2px solid #333;
+            border-bottom: 1px solid #ddd;
+        }
+        .return-code-section {
+            text-align: center; padding: 15px; border-top: 3px solid #333;
+            background: #fffde7;
+        }
+        .return-code {
+            font-size: 22px; font-weight: bold; font-family: monospace;
+            letter-spacing: 3px; color: #333;
+        }
+        .footer {
+            text-align: center; padding: 10px; background: #333;
+            color: white; font-size: 12px;
+        }
+        .print-btn {
+            display: block; max-width: 500px; margin: 20px auto;
+            padding: 12px 30px; background: #4CAF50; color: white;
+            border: none; border-radius: 6px; font-size: 16px;
+            cursor: pointer; width: 100%;
+        }
+        .print-btn:hover { background: #388E3C; }
+        @media print {
+            body { padding: 0; background: white; }
+            .print-btn { display: none; }
+            .label-container { border: 2px solid black; }
+        }
+    </style>
+</head>
+<body>
+    <div class="label-container">
+        <div class="label-header">RETURN SHIPPING LABEL</div>
+
+        <div class="label-body">
+            <div class="label-row">
+                <span class="label-key">Return ID</span>
+                <span class="label-value">{{returnCode}}</span>
+            </div>
+            <div class="label-row">
+                <span class="label-key">Order ID</span>
+                <span class="label-value">{{orderId}}</span>
+            </div>
+        </div>
+
+        <div class="section-title">📦 FROM (Customer)</div>
+        <div class="label-body">
+            <div class="label-row">
+                <span class="label-key">Name</span>
+                <span class="label-value">{{customerName}}</span>
+            </div>
+            <div class="label-row">
+                <span class="label-key">Phone</span>
+                <span class="label-value">{{customerPhone}}</span>
+            </div>
+        </div>
+
+        <div class="section-title">🏪 TO (Store)</div>
+        <div class="label-body">
+            <div class="label-row">
+                <span class="label-key">Store</span>
+                <span class="label-value">{{storeName}}</span>
+            </div>
+            <div class="label-row">
+                <span class="label-key">Address</span>
+                <span class="label-value">{{storeAddress}}</span>
+            </div>
+            <div class="label-row">
+                <span class="label-key">Phone</span>
+                <span class="label-value">{{storePhone}}</span>
+            </div>
+        </div>
+
+        <div class="section-title">📋 Returned Product</div>
+        <div class="label-body">
+            <div class="label-row">
+                <span class="label-key">Product</span>
+                <span class="label-value">{{productName}}</span>
+            </div>
+            <div class="label-row">
+                <span class="label-key">Quantity</span>
+                <span class="label-value">{{quantity}}</span>
+            </div>
+        </div>
+
+        <div class="return-code-section">
+            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">RETURN CODE</div>
+            <div class="return-code">{{returnCode}}</div>
+        </div>
+
+        <div class="footer">
+            ✂️ Attach this label outside the package ✂️
+        </div>
+    </div>
+
+    <button class="print-btn" onclick="window.print()">🖨️ Print Label</button>
+</body>
+</html>

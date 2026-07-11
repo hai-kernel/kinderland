@@ -12,6 +12,7 @@ import kinderland.product.model.dto.request.CategoryRequest;
 import kinderland.product.model.dto.response.CategoryResponse;
 import kinderland.product.model.entity.Category;
 import kinderland.product.repository.CategoryRepository;
+import kinderland.product.repository.ProductRepository;
 
 import java.util.List;
 
@@ -21,6 +22,7 @@ import java.util.List;
 public class CategoryService {
 
     CategoryRepository categoryRepository;
+    ProductRepository productRepository;
     CategoryMapper categoryMapper;
 
     @Transactional
@@ -37,7 +39,11 @@ public class CategoryService {
 
     @Transactional
     public void delete(Long id) {
-        categoryRepository.delete(findEntity(id));
+        Category category = findEntity(id);
+        if (productRepository.existsByCategoryId(id)) {
+            throw new AppException(ErrorCode.CATEGORY_IN_USE);
+        }
+        categoryRepository.delete(category);
     }
 
     public CategoryResponse getById(Long id) {

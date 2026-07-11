@@ -11,32 +11,26 @@ import kinderland.common.exception.AppException;
 import kinderland.common.exception.ErrorCode;
 import kinderland.order.client.ProductClient;
 import kinderland.order.client.PaymentClient;
-import kinderland.order.client.dto.ProductInternalResponse;
+import kinderland.order.client.dto.SkuInternalResponse;
 import kinderland.order.client.dto.InitiatePaymentRequest;
 import kinderland.order.client.dto.PaymentInitResponse;
 import kinderland.order.event.OrderCreatedEvent;
 import kinderland.order.event.OrderCancelledEvent;
 import kinderland.order.event.OrderEventPublisher;
 import kinderland.order.mapper.OrderMapper;
-import kinderland.order.model.dto.request.CreateOrderRequest;
 import kinderland.order.model.dto.request.OrderLineRequest;
 import kinderland.order.model.dto.response.CheckoutResponse;
 import kinderland.order.model.dto.response.OrderResponse;
-import kinderland.order.model.entity.Cart;
-import kinderland.order.model.entity.CartItem;
 import kinderland.order.model.entity.Order;
 import kinderland.order.model.entity.OrderItem;
 import kinderland.order.model.entity.OrderStatus;
 import kinderland.order.model.entity.PaymentMethod;
-import kinderland.order.repository.CartRepository;
 import kinderland.order.repository.OrderRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -45,21 +39,30 @@ import java.util.Set;
 public class OrderService {
 
     OrderRepository orderRepository;
-    CartRepository cartRepository;
     ProductClient productClient;
     PaymentClient paymentClient;
     OrderEventPublisher orderEventPublisher;
     OrderMapper orderMapper;
+    LoyaltyService loyaltyService;
 
     /** Đơn PENDING quá số phút này sẽ bị tự huỷ + hoàn kho. */
     @org.springframework.beans.factory.annotation.Value("${order.pending-expiry-minutes:15}")
     @lombok.experimental.NonFinal
     int pendingExpiryMinutes;
 
+    /**
+     * Tạo đơn theo mô hình SKU + Store (khớp FE): mỗi dòng = {skuId, quantity}, cả đơn giao tại 1 store
+     * tới 1 địa chỉ. Với mỗi dòng: Feign lấy giá SKU + kiểm tồn TẠI store, chốt snapshot.
+     */
     @Transactional
-    public OrderResponse createOrder(String accountEmail, CreateOrderRequest request) {
+    public OrderResponse createOrder(String accountEmail, Long addressId, Long storeId, List<OrderLineRequest> lines) {
+        if (lines == null || lines.isEmpty()) {
+            throw new AppException(ErrorCode.CART_EMPTY);
+        }
         Order order = Order.builder()
                 .accountEmail(accountEmail)
+                .storeId(storeId)
+                .addressId(addressId)
                 .status(OrderStatus.PENDING)
                 .createdAt(LocalDateTime.now())
                 .totalAmount(BigDecimal.ZERO)
@@ -68,25 +71,22 @@ public class OrderService {
         BigDecimal total = BigDecimal.ZERO;
         List<OrderItem> items = new ArrayList<>();
 
-        // 1) Với mỗi dòng: gọi Product Service (Feign) lấy GIÁ & TỒN KHO chuẩn.
-        for (OrderLineRequest line : request.getItems()) {
-            ProductInternalResponse product = fetchProduct(line.getProductId());
-
-            if (!product.isActive()) {
-                throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
-            }
-            if (product.getStockQuantity() < line.getQuantity()) {
+        for (OrderLineRequest line : lines) {
+            SkuInternalResponse sku = fetchSku(line.getSkuId(), storeId);
+            if (sku.getAvailableQuantity() == null || sku.getAvailableQuantity() < line.getQuantity()) {
                 throw new AppException(ErrorCode.OUT_OF_STOCK);
             }
-
-            BigDecimal lineTotal = product.getPrice().multiply(BigDecimal.valueOf(line.getQuantity()));
+            BigDecimal unitPrice = sku.getPrice() == null ? BigDecimal.ZERO : sku.getPrice();
+            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()));
             total = total.add(lineTotal);
 
             items.add(OrderItem.builder()
                     .order(order)
-                    .productId(product.getId())
-                    .productName(product.getName())      // denormalize: chốt tên & giá tại thời điểm đặt
-                    .unitPrice(product.getPrice())
+                    .skuId(sku.getSkuId())
+                    .skuCode(sku.getSkuCode())
+                    .productName(sku.getProductName())     // denormalize snapshot
+                    .imageUrl(sku.getImageUrl())
+                    .unitPrice(unitPrice)
                     .quantity(line.getQuantity())
                     .lineTotal(lineTotal)
                     .build());
@@ -96,62 +96,8 @@ public class OrderService {
         order.setTotalAmount(total);
         Order saved = orderRepository.save(order);
 
-        // 2) Bắn event để Product Service TRỪ KHO (Saga bất đồng bộ).
-        //    Tách khỏi luồng đồng bộ: đơn vẫn tạo thành công kể cả khi trừ kho xử lý sau.
-        publishOrderCreated(saved);
-
+        publishOrderCreated(saved);   // product trừ kho theo (sku, store) qua Kafka
         return orderMapper.toResponse(saved);
-    }
-
-    private void publishOrderCreated(Order order) {
-        List<OrderCreatedEvent.Item> eventItems = order.getItems().stream()
-                .map(i -> OrderCreatedEvent.Item.builder()
-                        .productId(i.getProductId())
-                        .quantity(i.getQuantity())
-                        .build())
-                .toList();
-
-        orderEventPublisher.publishOrderCreated(OrderCreatedEvent.builder()
-                .orderId(order.getId())
-                .accountEmail(order.getAccountEmail())
-                .items(eventItems)
-                .build());
-    }
-
-    /**
-     * Đặt hàng TỪ GIỎ (luồng 2): lấy các item được tick (productIds) — hoặc TOÀN BỘ giỏ nếu để trống —
-     * dựng đơn (tái dùng createOrder), rồi XOÁ đúng những item đã đặt khỏi giỏ.
-     */
-    @Transactional
-    public OrderResponse createOrderFromCart(String accountEmail, List<Long> productIds) {
-        Cart cart = cartRepository.findByAccountEmail(accountEmail)
-                .orElseThrow(() -> new AppException(ErrorCode.CART_EMPTY));
-
-        boolean selectAll = (productIds == null || productIds.isEmpty());
-        Set<Long> wanted = selectAll ? Set.of() : new HashSet<>(productIds);
-        List<CartItem> selected = cart.getItems().stream()
-                .filter(i -> selectAll || wanted.contains(i.getProductId()))
-                .toList();
-        if (selected.isEmpty()) {
-            throw new AppException(ErrorCode.CART_EMPTY);
-        }
-
-        // Dựng CreateOrderRequest từ item đã chọn rồi tái dùng logic tạo đơn (check giá/tồn, trừ kho...).
-        CreateOrderRequest request = new CreateOrderRequest();
-        request.setItems(selected.stream().map(i -> {
-            OrderLineRequest line = new OrderLineRequest();
-            line.setProductId(i.getProductId());
-            line.setQuantity(i.getQuantity());
-            return line;
-        }).toList());
-        OrderResponse response = createOrder(accountEmail, request);
-
-        // Tạo đơn thành công -> gỡ đúng những sản phẩm đã đặt khỏi giỏ (giữ lại item chưa tick).
-        Set<Long> orderedIds = selected.stream().map(CartItem::getProductId).collect(java.util.stream.Collectors.toSet());
-        cart.getItems().removeIf(i -> orderedIds.contains(i.getProductId()));
-        cartRepository.save(cart);
-
-        return response;
     }
 
     public List<OrderResponse> getMyOrders(String accountEmail) {
@@ -168,11 +114,14 @@ public class OrderService {
      * Đơn GIỮ PENDING; chỉ chuyển PAID khi nhận PaymentCompletedEvent (Kafka) từ payment-service.
      */
     @Transactional
-    public CheckoutResponse checkout(Long id, String accountEmail, PaymentMethod method, String ipAddress) {
+    public CheckoutResponse checkout(Long id, String accountEmail, PaymentMethod method,
+                                     Integer pointsToUse, String ipAddress) {
         Order order = loadOwnedOrder(id, accountEmail);
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
         }
+
+        applyLoyaltyDiscount(order, accountEmail, pointsToUse);
 
         PaymentInitResponse pay = initiatePayment(order, method, ipAddress);
         String message = "VNPAY".equals(pay.getMethod())
@@ -188,7 +137,7 @@ public class OrderService {
                 .build();
     }
 
-    /** Set đơn PAID khi payment-service báo thanh toán thành công (gọi từ Kafka consumer). Idempotent. */
+    /** Set đơn PAID khi payment-service báo thanh toán thành công (Kafka consumer). Idempotent. */
     @Transactional
     public void markPaid(Long orderId) {
         Order order = orderRepository.findById(orderId)
@@ -201,20 +150,20 @@ public class OrderService {
         }
     }
 
-    /** Chủ đơn huỷ đơn: chỉ khi đơn chưa giao/hoàn tất và chưa bị huỷ. Bắn event để product hoàn kho. */
+    /**
+     * Chủ đơn huỷ đơn: CHỈ khi đơn còn PENDING (chưa thanh toán). Bắn event để product hoàn kho.
+     * Đơn đã PAID phải đi qua luồng trả hàng/hoàn tiền (ReturnRequest), không huỷ trực tiếp.
+     */
     @Transactional
     public OrderResponse cancelOrder(Long id, String accountEmail) {
         Order order = loadOwnedOrder(id, accountEmail);
-        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PAID) {
+        if (order.getStatus() != OrderStatus.PENDING) {
             throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
         }
         return orderMapper.toResponse(cancelAndRefund(order));
     }
 
-    /**
-     * Tự huỷ các đơn PENDING quá hạn (khách tạo đơn nhưng không thanh toán) và HOÀN KHO.
-     * Gọi định kỳ bởi OrderExpiryScheduler. Trả về số đơn đã huỷ.
-     */
+    /** Tự huỷ đơn PENDING quá hạn + hoàn kho (gọi định kỳ bởi OrderExpiryScheduler). */
     @Transactional
     public int cancelExpiredPendingOrders() {
         LocalDateTime cutoff = LocalDateTime.now().minusMinutes(pendingExpiryMinutes);
@@ -226,12 +175,76 @@ public class OrderService {
         return expired.size();
     }
 
-    /** Chuyển đơn sang CANCELLED + bắn event hoàn kho. Dùng chung cho huỷ thủ công và tự huỷ. */
     private Order cancelAndRefund(Order order) {
         order.setStatus(OrderStatus.CANCELLED);
         Order saved = orderRepository.save(order);
-        publishOrderCancelled(saved);   // product-service cộng kho lại
+        publishOrderCancelled(saved);   // product hoàn kho theo (sku, store)
         return saved;
+    }
+
+    /** ADMIN chuyển trạng thái đơn (PAID -> SHIPPING -> COMPLETED...). */
+    @Transactional
+    public OrderResponse updateStatus(Long id, OrderStatus newStatus, String role) {
+        if (!"ROLE_ADMIN".equals(role)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
+        }
+        // Tích điểm khi đơn chuyển COMPLETED (1 lần / đơn) — tính trên số tiền thực trả (đã trừ giảm điểm).
+        if (newStatus == OrderStatus.COMPLETED && !order.isPointsAwarded()) {
+            loyaltyService.awardPoints(order.getAccountEmail(), order.getTotalAmount());
+            order.setPointsAwarded(true);
+        }
+
+        order.setStatus(newStatus);
+        return orderMapper.toResponse(orderRepository.save(order));
+    }
+
+    // ---------- helpers ----------
+
+    /**
+     * Áp điểm loyalty lúc checkout: trừ điểm, giảm trực tiếp totalAmount (số tiền cần thanh toán).
+     * Chỉ áp 1 lần / đơn (guard theo pointsUsed) để checkout lặp không trừ điểm nhiều lần.
+     */
+    private void applyLoyaltyDiscount(Order order, String accountEmail, Integer pointsToUse) {
+        if (pointsToUse == null || pointsToUse <= 0 || order.getPointsUsed() != null && order.getPointsUsed() > 0) {
+            return;
+        }
+        BigDecimal discount = loyaltyService.usePoints(accountEmail, pointsToUse);
+        if (discount.compareTo(order.getTotalAmount()) > 0) {
+            discount = order.getTotalAmount();
+        }
+        order.setPointsUsed(pointsToUse);
+        order.setPointsDiscount(discount);
+        order.setTotalAmount(order.getTotalAmount().subtract(discount));
+        orderRepository.save(order);
+    }
+
+    private void publishOrderCreated(Order order) {
+        orderEventPublisher.publishOrderCreated(OrderCreatedEvent.builder()
+                .orderId(order.getId())
+                .accountEmail(order.getAccountEmail())
+                .items(order.getItems().stream()
+                        .map(i -> OrderCreatedEvent.Item.builder()
+                                .skuId(i.getSkuId()).storeId(order.getStoreId()).quantity(i.getQuantity())
+                                .build())
+                        .toList())
+                .build());
+    }
+
+    private void publishOrderCancelled(Order order) {
+        orderEventPublisher.publishOrderCancelled(OrderCancelledEvent.builder()
+                .orderId(order.getId())
+                .accountEmail(order.getAccountEmail())
+                .items(order.getItems().stream()
+                        .map(i -> OrderCancelledEvent.Item.builder()
+                                .skuId(i.getSkuId()).storeId(order.getStoreId()).quantity(i.getQuantity())
+                                .build())
+                        .toList())
+                .build());
     }
 
     private PaymentInitResponse initiatePayment(Order order, PaymentMethod method, String ipAddress) {
@@ -249,38 +262,6 @@ public class OrderService {
         }
     }
 
-    private void publishOrderCancelled(Order order) {
-        List<OrderCancelledEvent.Item> items = order.getItems().stream()
-                .map(i -> OrderCancelledEvent.Item.builder()
-                        .productId(i.getProductId())
-                        .quantity(i.getQuantity())
-                        .build())
-                .toList();
-
-        orderEventPublisher.publishOrderCancelled(OrderCancelledEvent.builder()
-                .orderId(order.getId())
-                .accountEmail(order.getAccountEmail())
-                .items(items)
-                .build());
-    }
-
-    /** ADMIN chuyển trạng thái đơn trong quá trình xử lý (PAID -> SHIPPING -> COMPLETED...). */
-    @Transactional
-    public OrderResponse updateStatus(Long id, OrderStatus newStatus, String role) {
-        if (!"ROLE_ADMIN".equals(role)) {
-            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
-        }
-        Order order = orderRepository.findById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
-        if (order.getStatus() == OrderStatus.CANCELLED) {
-            // Đơn đã huỷ là trạng thái kết thúc, không chuyển tiếp được.
-            throw new AppException(ErrorCode.INVALID_ORDER_STATUS);
-        }
-        order.setStatus(newStatus);
-        return orderMapper.toResponse(orderRepository.save(order));
-    }
-
-    /** Lấy đơn theo id và đảm bảo nó thuộc về chính user đang gọi (chống xem/sửa đơn người khác). */
     private Order loadOwnedOrder(Long id, String accountEmail) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
@@ -290,15 +271,14 @@ public class OrderService {
         return order;
     }
 
-    private ProductInternalResponse fetchProduct(Long productId) {
+    private SkuInternalResponse fetchSku(Long skuId, Long storeId) {
         try {
-            return productClient.getProduct(productId);
+            return productClient.getSku(skuId, storeId);
         } catch (FeignException.NotFound e) {
-            throw new AppException(ErrorCode.PRODUCT_NOT_FOUND);
+            throw new AppException(ErrorCode.SKU_NOT_FOUND);
         } catch (FeignException e) {
-            log.error("Gọi Product Service lỗi (productId={}): {}", productId, e.getMessage());
+            log.error("Gọi Product Service lỗi (skuId={}): {}", skuId, e.getMessage());
             throw new AppException(ErrorCode.SERVICE_UNAVAILABLE);
         }
     }
-
 }

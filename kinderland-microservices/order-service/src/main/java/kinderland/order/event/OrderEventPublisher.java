@@ -16,6 +16,7 @@ public class OrderEventPublisher {
 
     public static final String ORDER_CREATED_BINDING = "orderCreated-out-0";
     public static final String ORDER_CANCELLED_BINDING = "orderCancelled-out-0";
+    public static final String RETURN_RECEIVED_BINDING = "returnReceived-out-0";
 
     private final StreamBridge streamBridge;
 
@@ -34,6 +35,15 @@ public class OrderEventPublisher {
             log.info("Đã publish OrderCancelledEvent orderId={}", event.getOrderId());
         } else {
             log.warn("Publish OrderCancelledEvent THẤT BẠI orderId={}", event.getOrderId());
+        }
+    }
+
+    public void publishReturnReceived(ReturnReceivedEvent event) {
+        boolean sent = streamBridge.send(RETURN_RECEIVED_BINDING, event);
+        if (sent) {
+            log.info("Đã publish ReturnReceivedEvent returnId={}", event.getReturnId());
+        } else {
+            log.warn("Publish ReturnReceivedEvent THẤT BẠI returnId={}", event.getReturnId());
         }
     }
 }

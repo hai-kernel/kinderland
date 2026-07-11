@@ -1,21 +1,19 @@
 package kinderland.order.client;
 
+import kinderland.order.client.dto.SkuInternalResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import kinderland.order.client.dto.ProductInternalResponse;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
- * OpenFeign client gọi Internal API của Product Service (kiểm tra giá/tồn lúc tạo đơn).
- *
- * name = "PRODUCT-SERVICE" -> phân giải qua Eureka + Spring Cloud LoadBalancer
- * (không hard-code host:port). Đi THẲNG tới product-service, KHÔNG qua Gateway.
- *
- * Việc trừ kho KHÔNG dùng Feign nữa — đã chuyển sang event (OrderEventPublisher).
+ * OpenFeign client gọi Internal API SKU của Product Service: lấy giá SKU + tồn khả dụng TẠI 1 store,
+ * dùng khi tạo đơn (đồng bộ). Phân giải qua Eureka (lb://PRODUCT-SERVICE), KHÔNG qua Gateway.
+ * Việc TRỪ KHO không dùng Feign — chuyển sang event (OrderCreatedEvent) trừ kho theo (sku,store).
  */
-@FeignClient(name = "PRODUCT-SERVICE", path = "/internal/products")
+@FeignClient(name = "PRODUCT-SERVICE", path = "/internal/skus")
 public interface ProductClient {
 
     @GetMapping("/{id}")
-    ProductInternalResponse getProduct(@PathVariable("id") Long id);
+    SkuInternalResponse getSku(@PathVariable("id") Long id, @RequestParam("storeId") Long storeId);
 }

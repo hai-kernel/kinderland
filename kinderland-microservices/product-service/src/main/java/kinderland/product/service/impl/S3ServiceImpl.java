@@ -82,4 +82,15 @@ public class S3ServiceImpl implements S3Service {
         s3Client.deleteObject(deleteRequest);
         urlCache.remove(key);
     }
+
+    @Override
+    public String resolveImageUrl(String imageUrlOrKey) {
+        if (imageUrlOrKey == null || imageUrlOrKey.isBlank()) {
+            return null;
+        }
+        if (imageUrlOrKey.startsWith("http")) {
+            return imageUrlOrKey;   // đã là URL đầy đủ
+        }
+        return generatePresignedUrl(imageUrlOrKey);   // là S3 key -> ký tạm
+    }
 }

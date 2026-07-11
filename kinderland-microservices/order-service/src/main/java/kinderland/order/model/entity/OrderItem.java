@@ -10,9 +10,8 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 
 /**
- * OrderDetail. productId là tham chiếu LỎNG tới Product Service (không FK).
- * productName/unitPrice được DENORMALIZE (chốt tại thời điểm đặt) để đơn bất biến
- * dù sau này giá sản phẩm đổi.
+ * Dòng đơn hàng theo SKU. skuId tham chiếu lỏng tới product-service (không FK).
+ * skuCode/productName/unitPrice/imageUrl DENORMALIZE (chốt tại thời điểm đặt) để đơn bất biến.
  */
 @Entity
 @Table(name = "order_items")
@@ -31,9 +30,11 @@ public class OrderItem {
     private Order order;
 
     @Column(nullable = false)
-    private Long productId;
+    private Long skuId;
 
+    private String skuCode;
     private String productName;
+    private String imageUrl;
 
     @Column(precision = 12, scale = 2)
     private BigDecimal unitPrice;

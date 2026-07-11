@@ -29,7 +29,7 @@ spring:
   # ----- Kafka consumer: trừ kho (order-created) + hoàn kho (order-cancelled) -----
   cloud:
     function:
-      definition: orderCreated;orderCancelled     # 2 bean Consumer
+      definition: orderCreated;orderCancelled;returnReceived   # 3 bean Consumer
     stream:
       bindings:
         orderCreated-in-0:
@@ -37,6 +37,9 @@ spring:
           group: product-service
         orderCancelled-in-0:
           destination: order-cancelled-events     # topic do order-service publish khi huỷ đơn
+          group: product-service
+        returnReceived-in-0:
+          destination: return-received-events     # topic do order-service publish khi nhận hàng trả
           group: product-service
       kafka:
         binder:

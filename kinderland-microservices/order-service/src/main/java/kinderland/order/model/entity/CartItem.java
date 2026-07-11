@@ -23,8 +23,13 @@ public class CartItem {
     @JsonIgnore
     private Cart cart;
 
+    /** Biến thể sản phẩm (tham chiếu lỏng tới product-service). */
     @Column(nullable = false)
-    private Long productId;
+    private Long skuId;
+
+    /** Cửa hàng mua tại (tồn kho theo store). */
+    @Column(nullable = false)
+    private Long storeId;
 
     private Integer quantity;
 }

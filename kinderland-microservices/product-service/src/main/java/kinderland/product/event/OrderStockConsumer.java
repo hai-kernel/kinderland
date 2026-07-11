@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import kinderland.product.idempotency.IdempotencyService;
-import kinderland.product.service.ProductService;
+import kinderland.product.service.InventoryService;
 
 import java.util.function.Consumer;
 
@@ -23,13 +23,13 @@ import java.util.function.Consumer;
 @Slf4j
 public class OrderStockConsumer {
 
-    private final ProductService productService;
+    private final InventoryService inventoryService;
     private final IdempotencyService idempotency;
 
     @Bean
     public Consumer<OrderCreatedEvent> orderCreated() {
         return event -> {
-            log.info("Nhận OrderCreatedEvent orderId={} ({} dòng) → trừ kho",
+            log.info("Nhận OrderCreatedEvent orderId={} ({} dòng) → trừ kho theo (sku,store)",
                     event.getOrderId(), event.getItems() == null ? 0 : event.getItems().size());
             if (event.getItems() == null) {
                 return;
@@ -38,7 +38,7 @@ public class OrderStockConsumer {
                 // Trừ kho cả đơn trong 1 transaction + chống xử lý trùng (Kafka at-least-once).
                 idempotency.runOnce("order-created:" + event.getOrderId(), () ->
                         event.getItems().forEach(item ->
-                                productService.decrementStock(item.getProductId(), item.getQuantity())));
+                                inventoryService.decrementStock(item.getSkuId(), item.getStoreId(), item.getQuantity())));
             } catch (Exception e) {
                 log.error("Trừ kho thất bại (orderId={}): {}", event.getOrderId(), e.getMessage());
             }

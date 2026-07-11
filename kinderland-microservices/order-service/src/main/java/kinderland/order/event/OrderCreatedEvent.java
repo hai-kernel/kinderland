@@ -25,7 +25,8 @@ public class OrderCreatedEvent {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class Item {
-        private Long productId;
+        private Long skuId;
+        private Long storeId;
         private int quantity;
     }
 }

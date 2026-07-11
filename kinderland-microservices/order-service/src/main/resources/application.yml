@@ -30,6 +30,8 @@ spring:
           destination: order-events
         orderCancelled-out-0:             # producer: hoàn kho khi huỷ (product-service)
           destination: order-cancelled-events
+        returnReceived-out-0:             # producer: hoàn kho khi nhận hàng trả (product-service)
+          destination: return-received-events
         paymentCompleted-in-0:            # consumer: set đơn PAID
           destination: payment-events     # topic do payment-service publish
           group: order-service

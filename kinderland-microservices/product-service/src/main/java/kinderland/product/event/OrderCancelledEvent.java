@@ -16,7 +16,8 @@ public class OrderCancelledEvent {
 
     @Data
     public static class Item {
-        private Long productId;
+        private Long skuId;
+        private Long storeId;
         private int quantity;
     }
 }

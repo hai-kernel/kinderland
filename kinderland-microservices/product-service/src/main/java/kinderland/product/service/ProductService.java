@@ -11,11 +11,19 @@ import kinderland.product.mapper.ProductMapper;
 import kinderland.product.model.dto.internal.ProductInternalResponse;
 import kinderland.product.model.dto.request.ProductRequest;
 import kinderland.product.model.dto.response.ProductResponse;
+import kinderland.product.model.entity.Brand;
 import kinderland.product.model.entity.Category;
+import kinderland.product.model.entity.EntityType;
+import kinderland.product.model.entity.Image;
 import kinderland.product.model.entity.Product;
+import kinderland.product.repository.BrandRepository;
 import kinderland.product.repository.CategoryRepository;
+import kinderland.product.repository.ImageRepository;
 import kinderland.product.repository.ProductRepository;
+import kinderland.product.repository.SkuRepository;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -25,6 +33,10 @@ public class ProductService {
 
     ProductRepository productRepository;
     CategoryRepository categoryRepository;
+    BrandRepository brandRepository;
+    ImageRepository imageRepository;
+    SkuRepository skuRepository;
+    S3Service s3Service;
     ProductMapper productMapper;
 
     // ---------- CRUD cho Frontend ----------
@@ -33,7 +45,11 @@ public class ProductService {
         Product product = productMapper.toEntity(request);
         product.setActive(true);
         product.setCategory(resolveCategory(request.getCategoryId()));
-        return productMapper.toResponse(productRepository.save(product));
+        product.setBrand(resolveBrand(request.getBrandId()));
+        applyDefaults(product);
+        Product saved = productRepository.save(product);
+        upsertProductImage(saved.getId(), request.getImageUrl());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -41,7 +57,11 @@ public class ProductService {
         Product product = findEntity(id);
         productMapper.updateEntity(request, product);
         product.setCategory(resolveCategory(request.getCategoryId()));
-        return productMapper.toResponse(productRepository.save(product));
+        product.setBrand(resolveBrand(request.getBrandId()));
+        applyDefaults(product);
+        Product saved = productRepository.save(product);
+        upsertProductImage(saved.getId(), request.getImageUrl());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -50,11 +70,55 @@ public class ProductService {
     }
 
     public ProductResponse getById(Long id) {
-        return productMapper.toResponse(findEntity(id));
+        return toResponse(findEntity(id));
     }
 
     public List<ProductResponse> getAll() {
-        return productMapper.toResponseList(productRepository.findAll());
+        return productRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    /** Map entity -> response + đính presigned URL của ảnh bìa (ảnh đầu tiên của product). */
+    private ProductResponse toResponse(Product product) {
+        ProductResponse response = productMapper.toResponse(product);
+        // minPrice = giá SKU nhỏ nhất nếu product đã có SKU; chưa có thì giữ price của product (fallback).
+        BigDecimal skuMin = skuRepository.findMinPriceByProductId(product.getId());
+        if (skuMin != null) {
+            response.setMinPrice(skuMin);
+        }
+        imageRepository.findByEntityTypeAndEntityId(EntityType.PRODUCT, product.getId())
+                .stream().findFirst()
+                .ifPresent(img -> response.setImageUrl(s3Service.resolveImageUrl(img.getImageUrl())));
+        return response;
+    }
+
+    /** Lưu/cập nhật ảnh bìa của product (FE truyền S3 key qua request.imageUrl). */
+    private void upsertProductImage(Long productId, String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        List<Image> existing = imageRepository.findByEntityTypeAndEntityId(EntityType.PRODUCT, productId);
+        if (!existing.isEmpty()) {
+            Image img = existing.get(0);
+            img.setImageUrl(key);
+            imageRepository.save(img);
+        } else {
+            imageRepository.save(Image.builder()
+                    .entityType(EntityType.PRODUCT)
+                    .entityId(productId)
+                    .imageUrl(key)
+                    .createdAt(LocalDateTime.now())
+                    .build());
+        }
+    }
+
+    /** FE (mô hình SKU) không gửi price/stock -> mặc định 0 để không vi phạm cột NOT NULL. */
+    private void applyDefaults(Product product) {
+        if (product.getPrice() == null) {
+            product.setPrice(BigDecimal.ZERO);
+        }
+        if (product.getStockQuantity() == null) {
+            product.setStockQuantity(0);
+        }
     }
 
     // ---------- Internal API (Order Service gọi qua Feign) ----------
@@ -88,6 +152,14 @@ public class ProductService {
         }
         return categoryRepository.findById(categoryId)
                 .orElseThrow(() -> new AppException(ErrorCode.CATEGORY_NOT_FOUND));
+    }
+
+    private Brand resolveBrand(Long brandId) {
+        if (brandId == null) {
+            return null;
+        }
+        return brandRepository.findById(brandId)
+                .orElseThrow(() -> new AppException(ErrorCode.BRAND_NOT_FOUND));
     }
 
     private Product findEntity(Long id) {

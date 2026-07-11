@@ -75,7 +75,6 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
             "/api/v1/sku/**",
             "/api/v1/stores/**",
             "/api/v1/products/**",
-            "/api/v1/financial/**",
             "/api/v1/blogs/**",
             "/api/v1/blog-categories/**",
             "/api/v1/reviews/**",
