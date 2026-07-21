@@ -35,7 +35,7 @@ target/
 # .env.example là file mẫu, không chứa secret
 # Vẫn commit để chia sẻ cho team
 !.env.example
-
+.env.example
 # IDE
 .idea/
 *.iml

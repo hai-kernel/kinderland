@@ -9,24 +9,25 @@ spring:
     config:
       server:
         git:
-          # Repo chứa cấu hình tập trung.
-          # DEV mặc định: repo local ~/kinderland-config (đổi bằng CONFIG_GIT_URI).
-          #   LƯU Ý: với URI 'file:', Spring Cloud Config gọi copyFromLocalRepository và
-          #   YÊU CẦU một working tree có thư mục .git. Repo BARE (*.git) sẽ lỗi
-          #   "No .git at file:///..." -> đừng trỏ vào bare repo khi dùng file:.
-          # PROD: https://github.com/<org>/<config-repo>.git
-          # Cú pháp ${...} là THAY THẾ PLACEHOLDER, không phải giá trị literal.
-          # Viết ${https://github.com/...} sẽ khiến Spring đi tìm property TÊN LÀ
-          # "https://github.com/..." và ném "Could not resolve placeholder".
-          # Đúng cú pháp: ${TÊN_BIẾN:giá-trị-mặc-định}
-          uri: ${CONFIG_GIT_URI}
-          default-label: ${CONFIG_GIT_BRANCH:main}
-          # Credentials CHỈ dùng cho remote HTTPS private.
-          # TUYỆT ĐỐI KHÔNG viết token thật vào đây: file này được commit vào git
-          # và còn bị đóng gói vào JAR. Truyền qua biến môi trường CONFIG_GIT_USERNAME /
-          # CONFIG_GIT_TOKEN (hoặc .env không commit).
-          username: ${CONFIG_GIT_USERNAME}
-          password: ${CONFIG_GIT_TOKEN}
+          # Cú pháp ${...} là THAY THẾ PLACEHOLDER, không phải literal.
+          # PHẢI có giá trị mặc định sau dấu ':' — nếu viết ${CONFIG_GIT_URI} trần mà
+          # biến môi trường không tồn tại, Spring ném "Could not resolve placeholder"
+          # và Config Server CHẾT NGAY LÚC START (mọi service mất config theo).
+          uri: ${CONFIG_GIT_URI:https://github.com/hai-kernel/kinderland.git}
+
+          # Config nằm trong monorepo -> phải chỉ đúng thư mục con, nếu không
+          # Config Server tìm ở ROOT repo và trả về 0 property source.
+          search-paths: ${CONFIG_GIT_SEARCH_PATHS:kinderland-microservices/config-repository}
+
+          # QUAN TRỌNG: config-repository CHỈ tồn tại trên branch 'dev'.
+          # Branch 'main' có 0 file config -> để 'main' sẽ ra rỗng.
+          default-label: ${CONFIG_GIT_BRANCH:dev}
+
+          # Repo hiện PUBLIC -> không cần credentials (để rỗng = JGit bỏ qua auth).
+          # Chỉ điền khi chuyển repo sang private, và CHỈ qua biến môi trường.
+          # TUYỆT ĐỐI KHÔNG viết token thật vào file này: nó được commit và đóng gói vào JAR.
+          username: ${CONFIG_GIT_USERNAME:}
+          password: ${CONFIG_GIT_TOKEN:}
           clone-on-start: true
           # force-pull + refresh-rate 0: mỗi request đều pull mới, tránh phục vụ cache Git cũ
           force-pull: true

@@ -1,0 +1,34 @@
+# =====================================================================================
+# Cấu hình CHUNG cho môi trường DEV.
+# Được kích hoạt khi services chạy với spring.profiles.active=dev
+# =====================================================================================
+
+app:
+  seed:
+    enabled: true
+    # Auth Service
+    admin-account:
+      enabled: true
+    customer-account:
+      enabled: true
+    # Product Service
+    category:
+      enabled: true
+    brand:
+      enabled: true
+    product:
+      enabled: true
+    product-image:
+      enabled: true
+    promotion:
+      enabled: true
+    blog:
+      enabled: true
+    review:
+      enabled: true
+    # Order Service
+    order:
+      enabled: true
+    # Payment Service
+    payment:
+      enabled: true

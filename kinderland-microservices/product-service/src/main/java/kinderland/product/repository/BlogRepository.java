@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BlogRepository extends JpaRepository<Blog, Long> {
+    boolean existsByTitle(String title);
+
     /** Bài đã xuất bản, chưa xoá (danh sách công khai). */
     List<Blog> findByStatusTrueAndDeletedFalseOrderByPublishedAtDesc();
 
