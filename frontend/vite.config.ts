@@ -57,9 +57,11 @@ export default defineConfig({
     port: 3000,
     open: true,
     proxy: {
-      // Proxy tất cả request /api sang BE localhost:8080
+      // Proxy tất cả request /api sang API GATEWAY (8080).
+      // KHÔNG trỏ thẳng vào auth-service (8081): gateway mới là nơi định tuyến
+      // /api/v1/categories|products|orders... sang đúng microservice.
       '/api': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
       },

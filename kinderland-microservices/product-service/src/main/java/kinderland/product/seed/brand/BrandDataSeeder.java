@@ -41,7 +41,10 @@ public class BrandDataSeeder extends AbstractDataSeeder {
                 new BrandDef("Melissa & Doug", "Mỹ"),
                 new BrandDef("Hape", "Đức"),
                 new BrandDef("Crayola", "Mỹ"),
-                new BrandDef("Nerf", "Mỹ")
+                new BrandDef("Nerf", "Mỹ"),
+                new BrandDef("Ravensburger", "Đức"),
+                new BrandDef("Playmobil", "Đức"),
+                new BrandDef("Bandai", "Nhật Bản")
         );
 
         int created = 0;

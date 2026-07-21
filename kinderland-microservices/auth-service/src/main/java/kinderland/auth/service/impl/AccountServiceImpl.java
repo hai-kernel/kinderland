@@ -8,6 +8,10 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
+import lombok.extern.slf4j.Slf4j;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -41,6 +45,7 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class AccountServiceImpl implements AccountService {
@@ -163,12 +168,62 @@ public class AccountServiceImpl implements AccountService {
 
             GoogleIdToken idToken = verifier.verify(idTokenString);
             if (idToken == null) {
+                // verify() trả null khi: sai audience, sai issuer, token hết hạn hoặc chữ ký sai.
+                // Log lý do CỤ THỂ để không phải đoán. TUYỆT ĐỐI không log token.
+                logGoogleTokenMismatch(idTokenString);
                 throw new AppException(ErrorCode.INVALID_GOOGLE_ID_TOKEN);
             }
             return idToken.getPayload();
         } catch (GeneralSecurityException | IOException e) {
             throw new AppException(ErrorCode.GOOGLE_TOKEN_VERIFICATION_FAILED, e);
+        } catch (IllegalArgumentException e) {
+            // Chuỗi không phải JWT hợp lệ -> GoogleIdTokenVerifier ném IllegalArgumentException.
+            // Không bắt ở đây thì lỗi thoát ra thành HTTP 500 thay vì 401.
+            throw new AppException(ErrorCode.INVALID_GOOGLE_ID_TOKEN);
         }
+    }
+
+    /**
+     * Giải mã phần payload của ID token (KHÔNG xác thực) chỉ để log nguyên nhân thất bại.
+     * Không bao giờ dùng dữ liệu này để cấp quyền, và không bao giờ log token.
+     */
+    private void logGoogleTokenMismatch(String idTokenString) {
+        String expected = maskClientId(googleClientId);
+        try {
+            String[] parts = idTokenString.split("\\.");
+            if (parts.length != 3) {
+                log.warn("Google ID token verify FAILED: not a valid JWT. configuredAudience={}", expected);
+                return;
+            }
+            String json = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
+            GoogleIdToken.Payload payload = GsonFactory.getDefaultInstance()
+                    .fromString(json, GoogleIdToken.Payload.class);
+
+            String actualAud = String.valueOf(payload.getAudience());
+            boolean audMatches = actualAud.contains(googleClientId == null ? " " : googleClientId);
+            boolean expired = payload.getExpirationTimeSeconds() != null
+                    && payload.getExpirationTimeSeconds() < (System.currentTimeMillis() / 1000);
+
+            log.warn("Google ID token verify FAILED -> audienceMatches={} tokenExpired={} issuer={} configuredAudience={} tokenAudience={}",
+                    audMatches, expired, payload.getIssuer(), expected, maskClientId(actualAud));
+
+            if (!audMatches) {
+                log.warn("ROOT CAUSE: auth-service GOOGLE_CLIENT_ID does NOT match the Client ID the frontend used. "
+                        + "Set GOOGLE_CLIENT_ID equal to VITE_GOOGLE_CLIENT_ID and restart auth-service.");
+            }
+        } catch (Exception ex) {
+            // Đây chỉ là code chẩn đoán: mọi lỗi ở đây đều nuốt, không được che lỗi xác thực gốc.
+            log.warn("Google ID token verify FAILED and payload could not be decoded. configuredAudience={}", expected);
+        }
+    }
+
+    /** Client ID không phải secret, nhưng vẫn chỉ log phần đầu để log gọn và an toàn. */
+    private String maskClientId(String value) {
+        if (value == null || value.isBlank()) {
+            return "(CHUA CAU HINH)";
+        }
+        int dash = value.indexOf('-');
+        return (dash > 0 ? value.substring(0, dash) : value.substring(0, Math.min(12, value.length()))) + "-***";
     }
 
     private Account createGoogleAccount(String email, String firstName, String lastName) {

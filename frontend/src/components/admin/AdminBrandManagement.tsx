@@ -40,7 +40,6 @@ export default function AdminBrandManagement() {
     const [formData, setFormData] = useState<BrandPayload>({
         name: '',
         origin: '',
-        logoUrl: '',
     });
 
     // Image file upload state
@@ -99,20 +98,7 @@ export default function AdminBrandManagement() {
         }
         setSaving(true);
         try {
-            // 1. Create brand first
-            const created = await brandApi.create({ name: formData.name, origin: formData.origin, logoUrl: '' });
-
-            // 2. Upload logo if selected
-            if (imageFile) {
-                setUploading(true);
-                try {
-                    const result = await imageApi.upload(imageFile, 'PRODUCT_BRAND', created.id);
-                    await brandApi.update(created.id, { name: formData.name, origin: formData.origin, logoUrl: result.key });
-                } finally {
-                    setUploading(false);
-                }
-            }
-
+            await brandApi.create({ name: formData.name, origin: formData.origin });
             toast.success('Thêm thương hiệu thành công!');
             setIsAddDialogOpen(false);
             resetForm();
@@ -132,20 +118,7 @@ export default function AdminBrandManagement() {
         }
         setSaving(true);
         try {
-            let logoUrl = formData.logoUrl;
-
-            // Upload new logo if selected
-            if (imageFile) {
-                setUploading(true);
-                try {
-                    const result = await imageApi.upload(imageFile, 'PRODUCT_BRAND', editingBrand.id);
-                    logoUrl = result.key;
-                } finally {
-                    setUploading(false);
-                }
-            }
-
-            await brandApi.update(editingBrand.id, { name: formData.name, origin: formData.origin, logoUrl });
+            await brandApi.update(editingBrand.id, { name: formData.name, origin: formData.origin });
             toast.success('Cập nhật thương hiệu thành công!');
             setEditingBrand(null);
             resetForm();
@@ -170,15 +143,15 @@ export default function AdminBrandManagement() {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', origin: '', logoUrl: '' });
+        setFormData({ name: '', origin: '' });
         clearImage();
     };
 
     const openEditDialog = (brand: Brand) => {
         setEditingBrand(brand);
-        setFormData({ name: brand.name, origin: brand.origin || '', logoUrl: brand.logoUrl || '' });
+        setFormData({ name: brand.name, origin: brand.origin || '' });
         setImageFile(null);
-        setImagePreview(brand.logoUrl || '');
+        setImagePreview('');
     };
 
     return (
@@ -328,11 +301,7 @@ export default function AdminBrandManagement() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="w-10 h-10 bg-gray-50 rounded border border-gray-100 flex items-center justify-center overflow-hidden">
-                                                    {brand.logoUrl ? (
-                                                        <img src={brand.logoUrl} alt={brand.name} className="w-full h-full object-contain" />
-                                                    ) : (
-                                                        <ImageIcon className="w-5 h-5 text-gray-300" />
-                                                    )}
+                                                    <ImageIcon className="w-5 h-5 text-gray-300" />
                                                 </div>
                                             </TableCell>
                                             <TableCell>
