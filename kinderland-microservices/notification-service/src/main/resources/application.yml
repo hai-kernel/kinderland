@@ -1,47 +1,11 @@
-server:
-  port: 8084
-
+# Cấu hình chi tiết được lấy từ Config Server (config-repository/notification-service.yml
+# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
 spring:
   application:
-    name: notification-service
+    name: notification-service   # PHẢI khớp tên file trong config-repository
   config:
-    import: optional:file:.env[.properties]
-
-  # ----- Email -----
-  mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
-    port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASS:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-  # ----- Kafka consumer (Spring Cloud Stream functional) -----
-  cloud:
-    function:
-      definition: userRegistered        # tên bean Consumer
-    stream:
-      bindings:
-        userRegistered-in-0:
-          destination: notification-events   # = Kafka topic
-          group: notification-service        # consumer group (đảm bảo mỗi event xử lý 1 lần/cụm)
-      kafka:
-        binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+    import:
+      # .env: nạp secret (MAIL_PASS...) - KHÔNG commit
+      - optional:file:.env[.properties]
+      # Config Server: nạp cấu hình tập trung
+      - optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}

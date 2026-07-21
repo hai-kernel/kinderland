@@ -1,0 +1,59 @@
+# ----- api-gateway: cổng vào duy nhất, validate JWT tập trung. Port 8080. -----
+server:
+  port: 8080
+
+spring:
+  # ----- Redis: đọc token blacklist (auth-service ghi vào khi logout) -----
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      # LƯU Ý 2025.0.0: cấu hình route nằm dưới 'server.webflux'
+      # (prefix cũ 'spring.cloud.gateway.routes' đã bị deprecated/đổi tên).
+      server:
+        webflux:
+          # Tắt auto-routing theo serviceId; ta khai báo route tường minh bên dưới.
+          discovery:
+            locator:
+              enabled: false
+          routes:
+            # ---------- AUTH SERVICE (8081) ----------
+            - id: auth-service
+              uri: lb://AUTH-SERVICE
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/account/**,/api/v1/address/**,/api/v1/admin/**,/api/v1/welcome
+
+            # ---------- PRODUCT SERVICE (8082) ----------
+            - id: product-service
+              uri: lb://PRODUCT-SERVICE
+              predicates:
+                - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
+
+            # ---------- ORDER SERVICE (8083) ----------
+            - id: order-service
+              uri: lb://ORDER-SERVICE
+              predicates:
+                - Path=/api/v1/orders/**,/api/v1/cart/**,/api/v1/financial/**,/api/v1/loyalty/**,/api/v1/return-requests/**
+
+            # ---------- PAYMENT SERVICE (8085) ----------
+            - id: payment-service
+              uri: lb://PAYMENT-SERVICE
+              predicates:
+                - Path=/api/v1/payment/**
+
+# Secret PHẢI trùng với auth-service (token do auth-service ký, Gateway verify).
+jwt:
+  secret: ${JWT_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    kinderland.gateway: DEBUG

@@ -1,0 +1,23 @@
+# =====================================================================================
+# Cấu hình DÙNG CHUNG cho tất cả service (Config Server native backend).
+# File này được nạp trước, sau đó bị ghi đè bởi {spring.application.name}.yml.
+#
+# CHỈ đặt ở đây những gì thực sự chung & an toàn cho mọi service.
+# KHÔNG đặt datasource/jpa ở đây (eureka-server, api-gateway, notification-service
+# không có DB) để tránh kích hoạt nhầm auto-config.
+# =====================================================================================
+
+# ----- Service discovery: mặc định trỏ về Eureka (eureka-server tự ghi đè) -----
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# ----- Actuator: expose health,info (api-gateway thêm 'gateway' trong file riêng) -----
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

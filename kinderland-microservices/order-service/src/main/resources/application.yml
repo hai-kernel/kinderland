@@ -1,70 +1,11 @@
-server:
-  port: 8083
-
+# Cấu hình chi tiết được lấy từ Config Server (config-repository/order-service.yml
+# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
 spring:
   application:
-    name: order-service   # khớp route lb://ORDER-SERVICE ở Gateway
+    name: order-service   # PHẢI khớp tên file trong config-repository và route lb://ORDER-SERVICE ở Gateway
   config:
-    import: optional:file:.env[.properties]
-
-  # ----- Database RIÊNG của order-service -----
-  datasource:
-    url: jdbc:postgresql://localhost:5432/kinderland_order_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  # ----- Kafka: producer (order-created, order-cancelled) + consumer (payment-completed) -----
-  cloud:
-    function:
-      definition: paymentCompleted        # bean Consumer nhận event từ payment-service
-    stream:
-      bindings:
-        orderCreated-out-0:               # producer: trừ kho (product-service)
-          destination: order-events
-        orderCancelled-out-0:             # producer: hoàn kho khi huỷ (product-service)
-          destination: order-cancelled-events
-        returnReceived-out-0:             # producer: hoàn kho khi nhận hàng trả (product-service)
-          destination: return-received-events
-        paymentCompleted-in-0:            # consumer: set đơn PAID
-          destination: payment-events     # topic do payment-service publish
-          group: order-service
-      kafka:
-        binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
-
-# ----- OpenFeign: timeout gọi Product/Payment Service -----
-feign:
-  client:
-    config:
-      default:
-        connect-timeout: 3000
-        read-timeout: 5000
-
-# ----- Tự huỷ đơn PENDING quá hạn (khách không thanh toán) + hoàn kho -----
-order:
-  pending-expiry-minutes: 15     # cửa sổ giữ chỗ/retry: đơn PENDING quá 15 phút sẽ bị huỷ + hoàn kho
-  expiry-scan-ms: 60000          # quét mỗi 60 giây
-
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+    import:
+      # .env: nạp secret (DB_PASSWORD...) - KHÔNG commit
+      - optional:file:.env[.properties]
+      # Config Server: nạp cấu hình tập trung
+      - optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}

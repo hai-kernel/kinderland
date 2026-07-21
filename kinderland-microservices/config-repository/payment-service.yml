@@ -1,0 +1,39 @@
+# ----- payment-service: thanh toán (VNPay + COD). Port 8085, DB kinderland_payment_db. -----
+server:
+  port: 8086
+
+spring:
+  # ----- Database RIÊNG của payment-service -----
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kinderland_payment_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ----- Kafka producer: bắn PaymentCompletedEvent -> order-service set PAID (Saga async) -----
+  cloud:
+    stream:
+      bindings:
+        paymentCompleted-out-0:
+          destination: payment-events
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+# ----- VNPay (sandbox). Điền giá trị thật vào .env, KHÔNG commit. -----
+vnpay:
+  tmn-code: ${VNPAY_TMN_CODE:}
+  secret-key: ${VNPAY_SECRET_KEY:}
+  url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
+  return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payment/vnpay-return}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

@@ -1,0 +1,63 @@
+# ----- auth-service: xác thực, user/account/address, cấp JWT. Port 8081, DB kinderland_auth_db. -----
+server:
+  port: 8081
+
+spring:
+  # ----- Database RIÊNG của auth-service -----
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kinderland_auth_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ----- Redis: lưu token blacklist (dùng chung với api-gateway) -----
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # ----- Email (gửi OTP quên mật khẩu) -----
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASS}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  # ----- Spring Cloud Stream + Kafka (publish UserCreatedEvent) -----
+  cloud:
+    stream:
+      bindings:
+        userCreated-out-0:
+          destination: notification-events   # = Kafka topic
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+# ----- JWT (auth-service ký token; Gateway dùng cùng secret để verify) -----
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:3600000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# ----- Google OAuth -----
+google:
+  client-id: ${GOOGLE_CLIENT_ID}
+
+# ----- Swagger -----
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs

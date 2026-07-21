@@ -1,0 +1,52 @@
+# Maven build output
+target/
+
+# Biến môi trường / secrets (mỗi service đọc optional:file:.env)
+.env
+.env.properties
+*.env.local
+# .env.example là FILE MẪU (không chứa secret) -> vẫn commit để chia sẻ cho team
+!.env.example
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+# Maven build output
+target/
+**/target/
+
+# Biến môi trường / secrets
+# Mỗi service có thể đọc optional:file:.env
+.env
+.env.properties
+*.env.local
+
+# .env.example là file mẫu, không chứa secret
+# Vẫn commit để chia sẻ cho team
+!.env.example
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

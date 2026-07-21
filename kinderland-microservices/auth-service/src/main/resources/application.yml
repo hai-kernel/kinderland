@@ -1,81 +1,11 @@
-server:
-  port: 8081
-
+# Cấu hình chi tiết được lấy từ Config Server (config-repository/auth-service.yml
+# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
 spring:
   application:
-    name: auth-service   # PHẢI khớp tên route lb://AUTH-SERVICE ở Gateway (Eureka tự upper-case)
+    name: auth-service   # PHẢI khớp tên file trong config-repository và route lb://AUTH-SERVICE ở Gateway
   config:
-    import: optional:file:.env[.properties]
-
-  # ----- Database RIÊNG của auth-service -----
-  datasource:
-    url: jdbc:postgresql://localhost:5432/kinderland_auth_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  # ----- Redis: lưu token blacklist (dùng chung với api-gateway) -----
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-  # ----- Email (gửi OTP quên mật khẩu) -----
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASS}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-  # ----- Spring Cloud Stream + Kafka (publish UserCreatedEvent) -----
-  cloud:
-    stream:
-      bindings:
-        userCreated-out-0:
-          destination: notification-events   # = Kafka topic
-      kafka:
-        binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
-
-# ----- Service discovery -----
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
-
-# ----- JWT (auth-service ký token; Gateway dùng cùng secret để verify) -----
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:3600000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
-
-# ----- Google OAuth -----
-google:
-  client-id: ${GOOGLE_CLIENT_ID}
-
-# ----- Swagger -----
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info
+    import:
+      # .env: nạp secret (JWT_SECRET, DB_PASSWORD, MAIL_PASS...) - KHÔNG commit
+      - optional:file:.env[.properties]
+      # Config Server: nạp cấu hình tập trung
+      - optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
