@@ -1,8 +1,22 @@
-# Cấu hình chi tiết được lấy từ Config Server (config-repository/api-gateway.yml
-# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ cấu hình khởi động sớm.
 spring:
   application:
-    name: api-gateway
+    name: api-gateway   # PHẢI khớp api-gateway.yml trong config repo
+
   config:
-    # Config Server: nạp cấu hình tập trung (routes, redis, jwt secret placeholder...)
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,busrefresh

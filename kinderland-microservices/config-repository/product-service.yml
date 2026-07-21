@@ -23,9 +23,10 @@ spring:
         format_sql: true
 
   # ----- Kafka consumer: trừ kho (order-created) + hoàn kho (order-cancelled) -----
+  # LƯU Ý: spring.cloud.function.definition đã chuyển về application.yml LOCAL của service
+  # vì Spring Cloud Bus (BusEnvironmentPostProcessor) đọc nó trước khi property source
+  # của Config Server sẵn sàng. Đừng khai báo lại ở đây.
   cloud:
-    function:
-      definition: orderCreated;orderCancelled;returnReceived   # 3 bean Consumer
     stream:
       bindings:
         orderCreated-in-0:

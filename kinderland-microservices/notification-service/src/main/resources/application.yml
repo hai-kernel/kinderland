@@ -1,11 +1,28 @@
-# Cấu hình chi tiết được lấy từ Config Server (config-repository/notification-service.yml
-# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ cấu hình khởi động sớm.
 spring:
   application:
-    name: notification-service   # PHẢI khớp tên file trong config-repository
+    name: notification-service   # PHẢI khớp notification-service.yml trong config repo
+
   config:
     import:
-      # .env: nạp secret (MAIL_PASS...) - KHÔNG commit
       - optional:file:.env[.properties]
-      # Config Server: nạp cấu hình tập trung
-      - optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+      - configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  cloud:
+    # Giữ ở LOCAL: BusEnvironmentPostProcessor append 'busConsumer' vào property này
+    # từ rất sớm, trước khi property source của Config Server sẵn sàng.
+    function:
+      definition: userRegistered
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,busrefresh

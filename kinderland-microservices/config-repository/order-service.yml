@@ -17,9 +17,9 @@ spring:
         format_sql: true
 
   # ----- Kafka: producer (order-created, order-cancelled) + consumer (payment-completed) -----
+  # LƯU Ý: spring.cloud.function.definition đã chuyển về application.yml LOCAL của service
+  # (xem giải thích trong product-service.yml). Đừng khai báo lại ở đây.
   cloud:
-    function:
-      definition: paymentCompleted        # bean Consumer nhận event từ payment-service
     stream:
       bindings:
         orderCreated-out-0:               # producer: trừ kho (product-service)

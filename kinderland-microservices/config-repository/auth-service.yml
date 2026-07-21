@@ -2,6 +2,11 @@
 server:
   port: 8081
 
+# Giá trị kiểm chứng auto-refresh: đổi ở Git rồi push -> GET /api/config-test đổi theo
+# mà service KHÔNG restart (pid giữ nguyên).
+app:
+  message: "Version 1"
+
 spring:
   # ----- Database RIÊNG của auth-service -----
   datasource:

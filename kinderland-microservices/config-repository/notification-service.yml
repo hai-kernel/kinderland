@@ -17,9 +17,9 @@ spring:
             enable: true
 
   # ----- Kafka consumer (Spring Cloud Stream functional) -----
+  # LƯU Ý: spring.cloud.function.definition đã chuyển về application.yml LOCAL của service
+  # (xem giải thích trong product-service.yml). Đừng khai báo lại ở đây.
   cloud:
-    function:
-      definition: userRegistered        # tên bean Consumer
     stream:
       bindings:
         userRegistered-in-0:

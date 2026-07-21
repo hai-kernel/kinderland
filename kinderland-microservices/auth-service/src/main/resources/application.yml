@@ -1,11 +1,30 @@
-# Cấu hình chi tiết được lấy từ Config Server (config-repository/auth-service.yml
-# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ:
+#   - tên service (để Config Server biết trả file nào)
+#   - nguồn cấu hình (.env cho secret + config server)
+#   - toạ độ Kafka cho Spring Cloud Bus (phải có TRƯỚC khi Bus khởi tạo)
 spring:
   application:
-    name: auth-service   # PHẢI khớp tên file trong config-repository và route lb://AUTH-SERVICE ở Gateway
+    name: auth-service   # PHẢI khớp auth-service.yml trong config repo
+
   config:
     import:
-      # .env: nạp secret (JWT_SECRET, DB_PASSWORD, MAIL_PASS...) - KHÔNG commit
+      # .env: secret (JWT_SECRET, DB_PASSWORD, MAIL_PASS...) - KHÔNG commit
       - optional:file:.env[.properties]
-      # Config Server: nạp cấu hình tập trung
-      - optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+      # KHÔNG dùng optional: -> fail ngay nếu Config Server không truy cập được
+      - configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  # Bus qua Kafka. Để ở local vì Bus khởi tạo rất sớm trong vòng đời context.
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,busrefresh

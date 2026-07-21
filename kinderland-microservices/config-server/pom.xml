@@ -21,6 +21,20 @@
             <artifactId>spring-cloud-config-server</artifactId>
         </dependency>
 
+        <!-- Config Monitor: mở endpoint POST /monitor nhận webhook từ GitHub,
+             suy ra file config nào đổi rồi phát RefreshRemoteApplicationEvent lên Bus -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-config-monitor</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud Bus qua Kafka (KHÔNG dùng AMQP/RabbitMQ).
+             Dùng chung broker Kafka với business messaging sẵn có. -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bus-kafka</artifactId>
+        </dependency>
+
         <!-- Actuator: endpoint /actuator/health cho giám sát (yml expose health,info) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

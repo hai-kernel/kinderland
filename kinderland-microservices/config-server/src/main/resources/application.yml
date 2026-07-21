@@ -5,28 +5,55 @@ spring:
   application:
     name: config-server
 
-  # native = đọc cấu hình từ hệ thống file (KHÔNG dùng Git backend)
-  profiles:
-    active: native
-
   cloud:
     config:
       server:
-        native:
-          search-locations:
-            - file:///C:/Users/ACER/Documents/GitHub/kinderland/kinderland-microservices/config-repository/
-            - file:///C:/Users/ACER/Documents/GitHub/kinderland/kinderland-microservices/config-repository
-            - file:./config-repository/
-            - file:../config-repository/
+        git:
+          # Repo chứa cấu hình tập trung.
+          # DEV mặc định: repo local ~/kinderland-config (đổi bằng CONFIG_GIT_URI).
+          #   LƯU Ý: với URI 'file:', Spring Cloud Config gọi copyFromLocalRepository và
+          #   YÊU CẦU một working tree có thư mục .git. Repo BARE (*.git) sẽ lỗi
+          #   "No .git at file:///..." -> đừng trỏ vào bare repo khi dùng file:.
+          # PROD: https://github.com/<org>/<config-repo>.git
+          # Cú pháp ${...} là THAY THẾ PLACEHOLDER, không phải giá trị literal.
+          # Viết ${https://github.com/...} sẽ khiến Spring đi tìm property TÊN LÀ
+          # "https://github.com/..." và ném "Could not resolve placeholder".
+          # Đúng cú pháp: ${TÊN_BIẾN:giá-trị-mặc-định}
+          uri: ${CONFIG_GIT_URI}
+          default-label: ${CONFIG_GIT_BRANCH:main}
+          # Credentials CHỈ dùng cho remote HTTPS private.
+          # TUYỆT ĐỐI KHÔNG viết token thật vào đây: file này được commit vào git
+          # và còn bị đóng gói vào JAR. Truyền qua biến môi trường CONFIG_GIT_USERNAME /
+          # CONFIG_GIT_TOKEN (hoặc .env không commit).
+          username: ${CONFIG_GIT_USERNAME}
+          password: ${CONFIG_GIT_TOKEN}
+          clone-on-start: true
+          # force-pull + refresh-rate 0: mỗi request đều pull mới, tránh phục vụ cache Git cũ
+          force-pull: true
+          refresh-rate: 0
+          delete-untracked-branches: true
+
+    # Bus dùng Kafka binder (KHÔNG dùng AMQP). Cùng broker với business messaging.
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 management:
   endpoints:
     web:
       exposure:
-        include:
-          - health
-          - info
-
+        # busrefresh: phát refresh thủ công toàn Bus. KHÔNG expose busenv/env/configprops.
+        include: health,info,busrefresh
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
+
+logging:
+  level:
+    # Thấy rõ: nhận webhook /monitor, pull Git, phát RefreshRemoteApplicationEvent
+    org.springframework.cloud.config.monitor: DEBUG
+    org.springframework.cloud.bus: DEBUG

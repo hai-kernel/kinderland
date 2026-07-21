@@ -75,6 +75,12 @@
             <artifactId>spring-cloud-starter-config</artifactId>
         </dependency>
 
+        <!-- Spring Cloud Bus qua Kafka: nhận RefreshRemoteApplicationEvent để refresh runtime -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bus-kafka</artifactId>
+        </dependency>
+
         <!-- Actuator: endpoint /actuator/health cho giám sát (yml đã khai báo expose health,info) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

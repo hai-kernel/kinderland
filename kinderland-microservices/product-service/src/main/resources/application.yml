@@ -1,11 +1,30 @@
-# Cấu hình chi tiết được lấy từ Config Server (config-repository/product-service.yml
-# + application.yml). File local chỉ giữ tên service + nguồn cấu hình.
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ cấu hình khởi động sớm.
 spring:
   application:
-    name: product-service   # PHẢI khớp tên file trong config-repository và route lb://PRODUCT-SERVICE ở Gateway
+    name: product-service   # PHẢI khớp product-service.yml trong config repo
+
   config:
     import:
-      # .env: nạp secret (DB_PASSWORD, AWS_ACCESS_KEY...) - KHÔNG commit
       - optional:file:.env[.properties]
-      # Config Server: nạp cấu hình tập trung
-      - optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+      - configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  cloud:
+    # QUAN TRỌNG: giữ function.definition ở LOCAL, không đưa vào config repo.
+    # BusEnvironmentPostProcessor đọc property này rất sớm (giai đoạn chuẩn bị Environment)
+    # rồi append 'busConsumer' và ghi đè lại. Nếu giá trị chỉ tồn tại trên Config Server,
+    # EPP sẽ không thấy 3 consumer nghiệp vụ và ghi đè mất chúng.
+    function:
+      definition: orderCreated;orderCancelled;returnReceived
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,busrefresh
