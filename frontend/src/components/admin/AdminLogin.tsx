@@ -1,61 +1,24 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAdmin } from '../../context/AdminContext';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { toast } from 'sonner@2.0.3';
-import { Package, ShieldCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import { Package, ShieldCheck, Loader2 } from 'lucide-react';
+import api from '../../services/api';
 
-export type UserRole = 'admin' | 'staff';
+export type UserRole = 'admin' | 'staff' | 'manager';
 
 export interface AdminUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
-  storeId?: string; // For staff members
+  storeId?: string;
   storeName?: string;
 }
-
-// Mock users for demo
-const MOCK_USERS: { email: string; password: string; user: AdminUser }[] = [
-  {
-    email: 'admin@kinderland.vn',
-    password: 'admin123',
-    user: {
-      id: 'admin-1',
-      email: 'admin@kinderland.vn',
-      name: 'Nguyễn Văn Admin',
-      role: 'admin',
-    },
-  },
-  {
-    email: 'staff1@kinderland.vn',
-    password: 'staff123',
-    user: {
-      id: 'staff-1',
-      email: 'staff1@kinderland.vn',
-      name: 'Trần Thị Nhân Viên',
-      role: 'staff',
-      storeId: 'store-1',
-      storeName: 'Kinderland Vincom Center Đồng Khởi',
-    },
-  },
-  {
-    email: 'staff2@kinderland.vn',
-    password: 'staff123',
-    user: {
-      id: 'staff-2',
-      email: 'staff2@kinderland.vn',
-      name: 'Lê Văn Thành',
-      role: 'staff',
-      storeId: 'store-6',
-      storeName: 'Kinderland Royal City Hà Nội',
-    },
-  },
-];
 
 export default function AdminLogin() {
   const navigate = useNavigate();
@@ -64,61 +27,99 @@ export default function AdminLogin() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Mock login check
-    setTimeout(() => {
-      const found = MOCK_USERS.find(
-        (u) => u.email === email && u.password === password
-      );
+    try {
+      const response = await api.post('/api/v1/auth/login', { email, password });
+      const data = response.data;
 
-      if (found) {
-        toast.success(`Đăng nhập thành công! Xin chào ${found.user.name}`);
-        loginAdmin(found.user);
-        if (found.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/staff/dashboard');
-        }
-      } else {
-        toast.error('Email hoặc mật khẩu không đúng!');
+      if (!data?.accessToken) {
+        toast.error('Không nhận được token từ server!');
+        return;
       }
+
+      // DEBUG: xem BE trả những field gì
+      console.log('[AdminLogin] login data fields:', Object.keys(data), data);
+
+      const { accessToken, refreshToken, role, email: userEmail } = data;
+
+      // Lưu token để các API call sau dùng
+      localStorage.setItem('accessToken', accessToken);
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+
+      toast.success('Đăng nhập thành công!');
+
+      // For MANAGER: fetch their assigned store via /api/v1/stores/me
+      let storeId: string | undefined;
+      let storeName: string | undefined;
+
+      if (role === 'ROLE_MANAGER') {
+        try {
+          const storeRes = await api.get('/api/v1/stores/me');
+          const store = storeRes?.data;
+          if (store) {
+            storeId = String(store.id);
+            storeName = store.name;
+            localStorage.setItem('storeId', storeId);
+            console.log('[AdminLogin] manager store:', store.name, 'id:', store.id);
+          }
+        } catch (storeErr) {
+          console.warn('[AdminLogin] Could not fetch manager store:', storeErr);
+        }
+      }
+
+      if (role === 'ROLE_ADMIN') {
+        loginAdmin({ id: userEmail, email: userEmail, name: userEmail, role: 'admin' });
+        navigate('/admin/dashboard');
+      } else if (role === 'ROLE_MANAGER') {
+        loginAdmin({ id: userEmail, email: userEmail, name: userEmail, role: 'manager', storeId, storeName });
+        navigate('/manager/dashboard');
+      } else if (role === 'ROLE_STAFF') {
+        loginAdmin({ id: userEmail, email: userEmail, name: userEmail, role: 'staff', storeId, storeName });
+        navigate('/staff/dashboard');
+      } else {
+        toast.error(`Role không được hỗ trợ: ${role}`);
+      }
+    } catch (error) {
+      console.error('Admin login error:', error);
+      toast.error('Email hoặc mật khẩu không đúng!');
+    } finally {
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#78A2D2]/20 via-white to-[#FEFFAF]/30 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-12 h-12 bg-[#78A2D2] rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gray-900 rounded-xl flex items-center justify-center">
               <Package className="w-7 h-7 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-[#78A2D2]">Kinderland</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Kinderland</h1>
           </div>
           <p className="text-gray-600">Hệ thống quản trị</p>
         </div>
 
-        <Card className="border-0 shadow-xl">
+        <Card className="border border-gray-200 shadow-lg">
           <CardHeader className="space-y-1">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-16 h-16 bg-[#78A2D2]/20 rounded-full flex items-center justify-center">
-                <ShieldCheck className="w-8 h-8 text-[#78A2D2]" />
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+                <ShieldCheck className="w-8 h-8 text-gray-900" />
               </div>
             </div>
-            <CardTitle className="text-2xl text-center">Đăng nhập</CardTitle>
-            <CardDescription className="text-center">
-              Dành cho quản trị viên và nhân viên cửa hàng
+            <CardTitle className="text-2xl text-center text-gray-900">Đăng nhập</CardTitle>
+            <CardDescription className="text-center text-gray-600">
+              Dành cho quản trị viên, quản lý và nhân viên cửa hàng
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-gray-900">Email</Label>
                 <Input
                   id="email"
                   type="email"
@@ -126,10 +127,11 @@ export default function AdminLogin() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  className="border-gray-300"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Mật khẩu</Label>
+                <Label htmlFor="password" className="text-gray-900">Mật khẩu</Label>
                 <Input
                   id="password"
                   type="password"
@@ -137,32 +139,39 @@ export default function AdminLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="border-gray-300"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full bg-[#78A2D2] hover:bg-[#6A94C4]"
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white"
                 disabled={isLoading}
               >
-                {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                {isLoading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Đang đăng nhập...</>
+                ) : 'Đăng nhập'}
               </Button>
             </form>
 
             {/* Demo credentials */}
-            <div className="mt-6 pt-6 border-t">
-              <p className="text-xs text-gray-600 mb-3 font-medium">Tài khoản demo:</p>
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-xs text-gray-700 mb-3 font-semibold">Tài khoản demo:</p>
               <div className="space-y-2 text-xs">
-                <div className="bg-[#78A2D2]/10 p-2 rounded border border-[#78A2D2]/30">
-                  <p className="font-medium text-[#2C2C2C]">Admin:</p>
-                  <p className="text-[#78A2D2]">admin@kinderland.vn / admin123</p>
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                  <p className="font-semibold text-gray-900 mb-1">Administrator (Toàn quyền)</p>
+                  <p className="text-gray-700 font-mono">admin@kinderland.vn / admin123</p>
                 </div>
-                <div className="bg-[#FEFFAF]/30 p-2 rounded border border-[#78A2D2]/30">
-                  <p className="font-medium text-[#2C2C2C]">Nhân viên HCM:</p>
-                  <p className="text-gray-700">staff1@kinderland.vn / staff123</p>
+                <div className="bg-amber-50 p-3 rounded-lg border border-amber-200">
+                  <p className="font-semibold text-gray-900 mb-1">Manager (Quản lý)</p>
+                  <p className="text-gray-700 font-mono">manager@kinderland.vn / manager123</p>
                 </div>
-                <div className="bg-[#FEFFAF]/30 p-2 rounded border border-[#78A2D2]/30">
-                  <p className="font-medium text-[#2C2C2C]">Nhân viên Hà Nội:</p>
-                  <p className="text-gray-700">staff2@kinderland.vn / staff123</p>
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="font-semibold text-gray-900 mb-1">Staff - Nhân viên HCM</p>
+                  <p className="text-gray-700 font-mono">staff1@kinderland.vn / staff123</p>
+                </div>
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                  <p className="font-semibold text-gray-900 mb-1">Staff - Nhân viên Hà Nội</p>
+                  <p className="text-gray-700 font-mono">staff2@kinderland.vn / staff123</p>
                 </div>
               </div>
             </div>
@@ -174,7 +183,7 @@ export default function AdminLogin() {
           <Button
             variant="ghost"
             onClick={() => navigate('/')}
-            className="text-gray-600 hover:text-[#78A2D2]"
+            className="text-gray-600 hover:text-gray-900"
           >
             ← Quay lại trang chủ Kinderland
           </Button>

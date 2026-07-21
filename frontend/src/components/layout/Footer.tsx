@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import {
   MapPin,
   Phone,
@@ -38,7 +38,7 @@ export default function Footer() {
   return (
     <footer>
       {/* Newsletter Section */}
-      <div className="bg-gradient-to-r from-[#78A2D2] via-[#6A94C4] to-[#78A2D2] py-12">
+      <div className="bg-gradient-to-r from-[#AF140B] to-[#8D0F08] py-12">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-white md:max-w-md">
@@ -62,7 +62,7 @@ export default function Footer() {
               />
               <button
                 type="submit"
-                className="px-8 py-4 bg-[#FEFFAF] text-[#2C2C2C] font-bold rounded-lg hover:bg-[#F0F09F] transition-all shadow-lg whitespace-nowrap"
+                className="px-8 py-4 bg-white text-[#AF140B] font-bold rounded-lg hover:bg-gray-50 transition-all shadow-lg whitespace-nowrap"
               >
                 {subscribed ? "Đã đăng ký!" : "Đăng ký"}
               </button>
@@ -72,7 +72,7 @@ export default function Footer() {
       </div>
 
       {/* Main Footer */}
-      <div className="bg-[#78A2D2] text-white py-12 border-t-4 border-white/20">
+      <div className="bg-[#4A4A4A] text-white py-12 border-t-4 border-white/10">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {/* Logo & Description */}
@@ -176,8 +176,8 @@ export default function Footer() {
               <ul className="space-y-4">
               
                 <li className="flex items-center gap-3">
-                  <div className="p-2 bg-[#FEFFAF] rounded-lg flex-shrink-0">
-                    <Phone className="w-5 h-5 text-[#78A2D2]" />
+                  <div className="p-2 bg-[#AF140B] rounded-lg flex-shrink-0">
+                    <Phone className="w-5 h-5 text-white" />
                   </div>
                   <a
                     href="tel:+842873008800"
@@ -187,8 +187,8 @@ export default function Footer() {
                   </a>
                 </li>
                 <li className="flex items-center gap-3">
-                  <div className="p-2 bg-[#FEFFAF] rounded-lg flex-shrink-0">
-                    <Mail className="w-5 h-5 text-[#78A2D2]" />
+                  <div className="p-2 bg-[#AF140B] rounded-lg flex-shrink-0">
+                    <Mail className="w-5 h-5 text-white" />
                   </div>
                   <a
                     href="mailto:contact@kinderland.vn"
@@ -198,8 +198,8 @@ export default function Footer() {
                   </a>
                 </li>
                   <li className="flex items-start gap-3">
-                  <div className="p-2 bg-[#FEFFAF] rounded-lg mt-1 flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-[#78A2D2]" />
+                  <div className="p-2 bg-[#AF140B] rounded-lg mt-1 flex-shrink-0">
+                    <MapPin className="w-5 h-5 text-white" />
                   </div>
                   <div className="text-white/90">
                     <p className="font-semibold text-white mb-1">
@@ -237,7 +237,7 @@ export default function Footer() {
       </div>
 
       {/* Copyright Bar */}
-      <div className="bg-[#6A94C4] py-6 border-t-2 border-white/20">
+      <div className="bg-[#3A3A3A] py-6 border-t-2 border-white/10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-white/90 text-sm">
             <p>

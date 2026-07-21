@@ -37,7 +37,7 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-6 relative">
+        <div className="bg-gradient-to-r from-[#AF140B] via-[#D91810] to-[#AF140B] p-6 relative">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-all"
@@ -72,7 +72,7 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nguyễn Văn A"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#AF140B] focus:border-[#AF140B] transition-all"
                   required
                 />
               </div>
@@ -88,31 +88,31 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="example@email.com"
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#AF140B] focus:border-[#AF140B] transition-all"
                     required
                   />
                 </div>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4">
+              <div className="bg-[#FFE5E3] rounded-xl p-4">
                 <h4 className="font-bold text-gray-800 mb-2 text-sm">
                   Bạn sẽ nhận được:
                 </h4>
                 <ul className="space-y-2 text-sm text-gray-700">
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="size-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle className="size-4 text-[#AF140B] flex-shrink-0" />
                     <span>Thông báo sản phẩm mới về</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="size-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle className="size-4 text-[#AF140B] flex-shrink-0" />
                     <span>Ưu đãi và khuyến mãi độc quyền</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="size-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle className="size-4 text-[#AF140B] flex-shrink-0" />
                     <span>Bài viết hữu ích về nuôi dạy con</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle className="size-4 text-green-500 flex-shrink-0" />
+                    <CheckCircle className="size-4 text-[#AF140B] flex-shrink-0" />
                     <span>Mã giảm giá sinh nhật đặc biệt</span>
                   </li>
                 </ul>
@@ -121,7 +121,7 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white py-4 rounded-xl hover:from-blue-700 hover:to-indigo-800 transition-all shadow-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-[#AF140B] to-[#D91810] text-white py-4 rounded-xl hover:from-[#8D0F08] hover:to-[#AF140B] transition-all shadow-lg font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Đang xử lý...' : 'Đăng ký ngay'}
               </button>
@@ -132,8 +132,8 @@ export default function NewsletterModal({ isOpen, onClose }: NewsletterModalProp
             </form>
           ) : (
             <div className="text-center py-8">
-              <div className="bg-green-100 rounded-full p-4 inline-block mb-4">
-                <CheckCircle className="size-16 text-green-500" />
+              <div className="bg-[#FFE5E3] rounded-full p-4 inline-block mb-4">
+                <CheckCircle className="size-16 text-[#AF140B]" />
               </div>
               <h3 className="text-2xl font-bold text-gray-800 mb-2">
                 Đăng ký thành công!

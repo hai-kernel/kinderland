@@ -4,7 +4,7 @@ import { Logo } from '../common/Logo';
 
 export function AboutSection() {
   return (
-    <section className="relative bg-[#78A2D2] py-20 overflow-hidden">
+    <section className="relative bg-[#AF140B] py-20 overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -26,14 +26,14 @@ export function AboutSection() {
           <div className="text-white">
             {/* Logo */}
             <div className="mb-6 inline-block">
-              <div className="bg-gradient-to-r from-[#FEFFAF] to-[#F0F09F] p-4 rounded-2xl shadow-xl">
+              <div className="bg-white p-4 rounded-2xl shadow-xl">
                 <Logo size="default" />
               </div>
             </div>
 
             {/* Heading */}
             <h2 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
-              <span className="bg-gradient-to-r from-[#FEFFAF] via-white to-[#FEFFAF] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-white via-white to-white bg-clip-text text-transparent">
                 TRẢI NGHIỆM MUA SẮM ĐỒ CHƠI
               </span>
               <br />
@@ -56,8 +56,8 @@ export function AboutSection() {
                 'Dịch vụ chất lượng cao'
               ].map((item, index) => (
                 <div key={index} className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-r from-[#FEFFAF] to-[#F0F09F] rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-[#78A2D2]" strokeWidth={3} />
+                  <div className="flex-shrink-0 w-6 h-6 bg-gradient-to-br from-[#FFD700] to-[#D4AF37] rounded-full flex items-center justify-center shadow-lg shadow-[#D4AF37]/30">
+                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
                   </div>
                   <span className="text-white font-medium">{item}</span>
                 </div>
@@ -68,7 +68,7 @@ export function AboutSection() {
           {/* Right Images - Overlapping circles */}
           <div className="relative h-[500px] lg:h-[600px]">
             {/* Large circle - Back */}
-            <div className="absolute top-0 right-0 w-[300px] h-[400px] md:w-[350px] md:h-[450px] rounded-[200px] overflow-hidden shadow-2xl border-4 border-[#FEFFAF] transform rotate-12 hover:rotate-6 transition-transform duration-500">
+            <div className="absolute top-0 right-0 w-[300px] h-[400px] md:w-[350px] md:h-[450px] rounded-[200px] overflow-hidden shadow-2xl border-4 border-white transform rotate-12 hover:rotate-6 transition-transform duration-500">
               <img
                 src="https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=800"
                 alt="Toys Collection"
@@ -86,14 +86,14 @@ export function AboutSection() {
             </div>
 
             {/* Decorative elements */}
-            <div className="absolute top-20 left-20 w-16 h-16 bg-gradient-to-r from-[#FEFFAF] to-white rounded-full blur-xl opacity-30 animate-pulse"></div>
-            <div className="absolute bottom-40 right-20 w-20 h-20 bg-gradient-to-r from-white to-[#FEFFAF] rounded-full blur-xl opacity-30 animate-pulse delay-75"></div>
+            <div className="absolute top-20 left-20 w-16 h-16 bg-white rounded-full blur-xl opacity-30 animate-pulse"></div>
+            <div className="absolute bottom-40 right-20 w-20 h-20 bg-white rounded-full blur-xl opacity-30 animate-pulse delay-75"></div>
           </div>
         </div>
       </div>
 
       {/* Bottom Bar - Services */}
-      <div className="mt-20 bg-gradient-to-r from-[#FEFFAF] to-[#F0F09F] py-8 border-t-4 border-white/20">
+      <div className="mt-20 bg-white py-8 border-t-4 border-white/20">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8">
             {[
@@ -116,7 +116,7 @@ export function AboutSection() {
               const Icon = service.icon;
               return (
                 <div key={index} className="flex items-start gap-4 text-[#2C2C2C]">
-                  <div className="flex-shrink-0 bg-[#78A2D2] p-4 rounded-xl">
+                  <div className="flex-shrink-0 bg-gradient-to-br from-[#AF140B] to-[#D91810] p-4 rounded-xl shadow-lg border-2 border-[#D4AF37]/20">
                     <Icon className="w-8 h-8 text-white" />
                   </div>
                   <div>

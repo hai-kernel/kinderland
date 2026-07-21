@@ -1,55 +1,160 @@
-import React, { useState } from 'react';
-import { stores, cities } from '../../data/stores';
-import { MapPin, Phone, Clock, Search, ChevronDown } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { storeApi, StoreItem, NearbyStoreItem, extractCityFromAddress } from "../../services/storeApi";
+import {
+  MapPin,
+  Phone,
+  Clock,
+  Search,
+  ChevronDown,
+  Loader2,
+  User,
+  Navigation,
+} from "lucide-react";
 
 export default function StoreFinderPage() {
-  const [selectedCity, setSelectedCity] = useState('TP. Hồ Chí Minh');
-  const [selectedStore, setSelectedStore] = useState(stores[0]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [expandedStoreId, setExpandedStoreId] = useState<string | null>(null);
+  const [storeList, setStoreList] = useState<StoreItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedStore, setSelectedStore] = useState<StoreItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedStoreId, setExpandedStoreId] = useState<number | null>(null);
+  const [nearbyStores, setNearbyStores] = useState<NearbyStoreItem[]>([]);
+  const [nearbyLoading, setNearbyLoading] = useState(false);
+  const [nearbyError, setNearbyError] = useState<string | null>(null);
 
-  const filteredStores = stores.filter((store) => {
-    const matchesCity = store.city === selectedCity;
-    const matchesSearch = 
-      store.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      store.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      store.district.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCity && matchesSearch;
+  useEffect(() => {
+    storeApi.getStores()
+      .then((data) => {
+        setStoreList(data);
+        if (data.length > 0) {
+          const firstCity = extractCityFromAddress(data[0].address);
+          setSelectedCity(firstCity);
+          setSelectedStore(data[0]);
+        }
+      })
+      .catch((err) => setError(err.message || "Không thể tải danh sách cửa hàng"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Lấy danh sách thành phố duy nhất từ BE data
+  const cities = [...new Set(storeList.map((s) => extractCityFromAddress(s.address)))];
+
+  // Geolocation handler
+  const handleFindNearby = () => {
+    if (!navigator.geolocation) {
+      setNearbyError("Trình duyệt không hỗ trợ định vị");
+      return;
+    }
+    setNearbyLoading(true);
+    setNearbyError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        storeApi.getNearbyStores(latitude, longitude)
+          .then(setNearbyStores)
+          .catch((err) => setNearbyError(err.message || "Không thể tìm cửa hàng gần bạn"))
+          .finally(() => setNearbyLoading(false));
+      },
+      () => {
+        setNearbyError("Không thể lấy vị trí. Vui lòng cho phép truy cập vị trí.");
+        setNearbyLoading(false);
+      }
+    );
+  };
+
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<StoreItem[] | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced server-side search
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+
+    if (!value.trim()) {
+      setSearchResults(null); // rỗng → hiển thị danh sách gốc
+      return;
+    }
+
+    searchTimerRef.current = setTimeout(() => {
+      setSearchLoading(true);
+      storeApi.searchStores(value)
+        .then(setSearchResults)
+        .catch(() => setSearchResults([]))
+        .finally(() => setSearchLoading(false));
+    }, 500);
+  };
+
+  // Danh sách hiển thị: kết quả search hoặc lọc theo thành phố
+  const baseList = searchResults !== null ? searchResults : storeList;
+  const filteredStores = baseList.filter((store) => {
+    const city = extractCityFromAddress(store.address);
+    return searchResults !== null || selectedCity === "" || city === selectedCity;
   });
+
+  const formatHours = (open: string, close: string) => `${open} - ${close}`;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen gap-3 text-gray-500">
+        <Loader2 className="size-6 animate-spin" />
+        <span>Đang tải danh sách cửa hàng...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-500 font-semibold text-lg mb-4">⚠️ {error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-[#AF140B] text-white rounded-xl font-semibold"
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#78A2D2] via-[#6A94C4] to-[#78A2D2] text-white py-16">
+      <div className="bg-gradient-to-r from-[#AF140B] via-[#D91810] to-[#AF140B] text-white py-5">
         <div className="container mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-3 bg-white/20 px-6 py-3 rounded-full mb-4 backdrop-blur-sm">
-            <MapPin className="size-6" />
-            <span className="font-bold text-lg">HỆ THỐNG CỬA HÀNG</span>
+          <div className="inline-flex items-center gap-2 bg-white/20 px-4 py-1.5 rounded-full mb-2 backdrop-blur-sm">
+            <MapPin className="size-4" />
+            <span className="font-bold text-sm">HỆ THỐNG CỬA HÀNG</span>
           </div>
-          <h1 className="text-5xl font-bold mb-4">
+          <h1 className="text-2xl font-bold mb-1">
             Tìm Cửa Hàng Kinderland
           </h1>
-          <p className="text-xl text-white/90">
-            {stores.length} cửa hàng trên toàn quốc
+          <p className="text-sm text-white/90">
+            {storeList.length} cửa hàng trên toàn quốc
           </p>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
+      <div className="container mx-auto px-4 py-6">
+        <div className="grid lg:grid-cols-3 gap-5">
           {/* Left Sidebar - Store List */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-4">
+            <div className="bg-white rounded-xl shadow-md p-4 sticky top-4">
+
               {/* City Selector */}
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-800 mb-2">
+              <div className="mb-3">
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
                   Chọn thành phố:
                 </label>
                 <select
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#78A2D2] focus:border-[#78A2D2] font-semibold text-gray-800"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#AF140B]/20 focus:border-[#AF140B] font-medium text-gray-700"
                 >
+                  <option value="">Tất cả</option>
                   {cities.map((city) => (
                     <option key={city} value={city}>
                       {city}
@@ -58,186 +163,278 @@ export default function StoreFinderPage() {
                 </select>
               </div>
 
+              {/* Nearby Button */}
+              <div className="mb-3">
+                <button
+                  onClick={handleFindNearby}
+                  disabled={nearbyLoading}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#AF140B] text-white rounded-lg text-sm font-semibold hover:bg-[#8D0F08] transition-all disabled:opacity-60"
+                >
+                  {nearbyLoading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Navigation className="size-4" />
+                  )}
+                  Tìm cửa hàng gần tôi
+                </button>
+                {nearbyError && (
+                  <p className="text-red-500 text-xs mt-2">{nearbyError}</p>
+                )}
+              </div>
+
+              {/* Nearby Results */}
+              {nearbyStores.length > 0 && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-sm font-bold text-blue-800 mb-3">📍 Cửa hàng gần bạn nhất:</p>
+                  <div className="space-y-2">
+                    {nearbyStores.slice(0, 3).map((s) => (
+                      <div
+                        key={s.id}
+                        className="flex items-center justify-between p-2 bg-white rounded-lg border border-blue-100 cursor-pointer hover:border-[#AF140B] transition-all"
+                        onClick={() => {
+                          const found = storeList.find((st) => st.id === s.id);
+                          if (found) { setSelectedStore(found); setSelectedCity(""); }
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 line-clamp-1">
+                            {s.name.replace("Kinderland ", "")}
+                          </p>
+                          <p className="text-xs text-gray-500 line-clamp-1">{s.address}</p>
+                        </div>
+                        <span className="text-xs font-bold text-[#AF140B] ml-2 whitespace-nowrap">
+                          {s.distanceKm === 0 ? "Ngay đây" : `${s.distanceKm.toFixed(1)} km`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Search */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 size-5 text-gray-400" />
+                  {searchLoading ? (
+                    <Loader2 className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-[#AF140B] animate-spin" />
+                  ) : (
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-gray-400" />
+                  )}
                   <input
                     type="text"
                     placeholder="Tìm cửa hàng..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-[#78A2D2] focus:border-[#78A2D2]"
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#AF140B]/20 focus:border-[#AF140B]"
                   />
                 </div>
               </div>
 
-              <div className="mb-4">
-                <p className="text-sm text-gray-700 font-semibold">
-                  <strong>{filteredStores.length}</strong> cửa hàng tại {selectedCity}
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 font-medium">
+                  <strong>{filteredStores.length}</strong> cửa hàng
+                  {selectedCity ? ` tại ${selectedCity}` : " trên toàn quốc"}
                 </p>
               </div>
 
               {/* Store List */}
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
+              <div className="space-y-2 max-h-[500px] overflow-y-auto">
                 {filteredStores.map((store) => {
                   const isExpanded = expandedStoreId === store.id;
-                  
                   return (
                     <div
                       key={store.id}
-                      className={`border-2 rounded-xl overflow-hidden transition-all ${
-                        selectedStore.id === store.id
-                          ? 'border-[#78A2D2] bg-[#78A2D2]/10'
-                          : 'border-gray-200 hover:border-[#78A2D2]/50'
-                      }`}
+                      className={`border rounded-lg overflow-hidden transition-all ${selectedStore?.id === store.id
+                        ? "border-[#AF140B] bg-[#FFE5E3]/50"
+                        : "border-gray-200 hover:border-[#AF140B]/50"
+                        }`}
                     >
                       <button
                         onClick={() => {
                           setSelectedStore(store);
                           setExpandedStoreId(isExpanded ? null : store.id);
                         }}
-                        className="w-full p-4 text-left flex items-center justify-between gap-2"
+                        className="w-full p-3 text-left flex items-center justify-between gap-2"
                       >
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-gray-800 line-clamp-1">
-                            {store.name.replace('Kinderland ', '')}
+                          <h3 className="font-semibold text-sm text-gray-800 line-clamp-1">
+                            {store.name.replace("Kinderland ", "")}
                           </h3>
-                          <p className="text-sm text-gray-600 line-clamp-1">{store.address}</p>
-                          <p className="text-xs text-gray-500">{store.district}</p>
+                          <p className="text-xs text-gray-500 line-clamp-1">
+                            {store.address}
+                          </p>
                         </div>
-                        <ChevronDown className={`size-5 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <ChevronDown
+                          className={`size-4 text-gray-400 flex-shrink-0 transition-transform ${isExpanded ? "rotate-180" : ""
+                            }`}
+                        />
                       </button>
 
                       {isExpanded && (
                         <div className="px-4 pb-4 pt-2 border-t-2 border-gray-100 space-y-2 bg-white">
                           <div className="flex items-start gap-2">
-                            <MapPin className="size-4 text-[#78A2D2] mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-gray-700">
-                              {store.address}, {store.district}, {store.city}
-                            </p>
+                            <MapPin className="size-4 text-[#AF140B] mt-0.5 flex-shrink-0" />
+                            <p className="text-sm text-gray-700">{store.address}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Phone className="size-4 text-[#78A2D2] flex-shrink-0" />
+                            <Phone className="size-4 text-[#AF140B] flex-shrink-0" />
                             <p className="text-sm text-gray-700">{store.phone}</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Clock className="size-4 text-[#78A2D2] flex-shrink-0" />
-                            <p className="text-sm text-gray-700">{store.openHours}</p>
+                            <Clock className="size-4 text-[#AF140B] flex-shrink-0" />
+                            <p className="text-sm text-gray-700">
+                              {formatHours(store.openingTime, store.closingTime)}
+                            </p>
                           </div>
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs text-[#78A2D2] font-semibold">• Đang mở cửa</p>
+                          <div className="flex items-center gap-2">
+                            <User className="size-4 text-[#AF140B] flex-shrink-0" />
+                            <p className="text-sm text-gray-700">
+                              Quản lý: {store.managerName}
+                            </p>
                           </div>
+                          {store.active && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs text-green-600 font-semibold">
+                                ● Đang hoạt động
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
                   );
                 })}
-              </div>
 
-              {filteredStores.length === 0 && (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">Không tìm thấy cửa hàng</p>
-                </div>
-              )}
+                {filteredStores.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">Không tìm thấy cửa hàng</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Right Content - Map & Store Details */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Map */}
-            <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-              <div className="aspect-video bg-gradient-to-br from-[#78A2D2]/20 to-[#6A94C4]/20 relative">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  scrolling="no"
-                  marginHeight={0}
-                  marginWidth={0}
-                  src={`https://maps.google.com/maps?q=${selectedStore.lat},${selectedStore.lng}&hl=vi&z=16&output=embed`}
-                  title={selectedStore.name}
-                />
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="aspect-video relative">
+                {selectedStore ? (
+                  <iframe
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    scrolling="no"
+                    src={`https://maps.google.com/maps?q=${selectedStore.latitude},${selectedStore.longitude}&hl=vi&z=16&output=embed`}
+                    title={selectedStore.name}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-[#FFE5E3] flex items-center justify-center">
+                    <p className="text-gray-500">Chọn cửa hàng để xem bản đồ</p>
+                  </div>
+                )}
                 <div className="absolute top-4 left-4 bg-white px-4 py-2 rounded-xl shadow-lg">
-                  <p className="text-sm font-bold text-gray-800">📍 {filteredStores.length} cửa hàng</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    📍 {filteredStores.length} cửa hàng
+                  </p>
                 </div>
               </div>
             </div>
 
             {/* Store Details Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-8">
-              <h2 className="text-3xl font-bold text-gray-800 mb-6">
-                {selectedStore.name}
-              </h2>
-              
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="size-6 text-[#78A2D2] mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-gray-700 mb-1">Địa chỉ</p>
-                      <p className="text-gray-600">{selectedStore.address}</p>
-                      <p className="text-gray-600">{selectedStore.district}, {selectedStore.city}</p>
+            {selectedStore && (
+              <div className="bg-white rounded-xl shadow-md p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-gray-800">
+                    {selectedStore.name}
+                  </h2>
+                  {selectedStore.active && (
+                    <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                      ● Hoạt động
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-2">
+                      <MapPin className="size-4 text-[#AF140B] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-gray-600 mb-0.5">Địa chỉ</p>
+                        <p className="text-sm text-gray-700">{selectedStore.address}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <Phone className="size-4 text-[#AF140B] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-gray-600 mb-0.5">SĐT</p>
+                        <a
+                          href={`tel:${selectedStore.phone}`}
+                          className="text-sm text-[#AF140B] hover:underline"
+                        >
+                          {selectedStore.phone}
+                        </a>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <Clock className="size-4 text-[#AF140B] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-gray-600 mb-0.5">Giờ mở cửa</p>
+                        <p className="text-sm text-gray-700">
+                          {formatHours(selectedStore.openingTime, selectedStore.closingTime)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2">
+                      <User className="size-4 text-[#AF140B] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-xs font-bold text-gray-600 mb-0.5">Quản lý</p>
+                        <p className="text-sm text-gray-700">{selectedStore.managerName}</p>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <Phone className="size-6 text-[#78A2D2] mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-gray-700 mb-1">Số điện thoại</p>
-                      <a href={`tel:${selectedStore.phone}`} className="text-[#78A2D2] hover:underline">
-                        {selectedStore.phone}
-                      </a>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start gap-3">
-                    <Clock className="size-6 text-[#78A2D2] mt-1 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-bold text-gray-700 mb-1">Giờ mở cửa</p>
-                      <p className="text-gray-600">{selectedStore.openHours}</p>
-                      <p className="text-sm text-[#78A2D2] font-semibold mt-1">• Đang mở cửa</p>
+
+                  {/* Right side */}
+                  <div className="bg-gradient-to-br from-[#FFE5E3] to-white rounded-lg p-4 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">🏪</div>
+                      <h3 className="font-bold text-sm text-gray-800 mb-1">
+                        Chào mừng đến Kinderland
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        Hơn 1000+ đồ chơi chất lượng
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Mã: {selectedStore.code}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Right side - Image placeholder or additional info */}
-                <div className="bg-gradient-to-br from-[#78A2D2]/20 to-[#6A94C4]/20 rounded-xl p-6 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">🏪</div>
-                    <h3 className="font-bold text-gray-800 mb-2">
-                      Chào mừng đến Kinderland
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Hơn 1000+ đồ chơi chất lượng cao
-                    </p>
+                {/* Additional Features */}
+                <div className="mt-5 pt-4 border-t border-gray-100">
+                  <h3 className="font-bold text-sm text-gray-800 mb-3">Dịch vụ tại cửa hàng</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    {[
+                      { icon: "🎁", label: "Gói quà miễn phí" },
+                      { icon: "✅", label: "Đổi trả 30 ngày" },
+                      { icon: "🎮", label: "Khu vui chơi" },
+                      { icon: "🅿️", label: "Bãi đỗ xe" },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="text-center p-2.5 bg-[#FFE5E3]/50 rounded-lg"
+                      >
+                        <div className="text-xl mb-1">{item.icon}</div>
+                        <p className="text-xs font-medium text-gray-600">{item.label}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              {/* Additional Features */}
-              <div className="mt-8 pt-6 border-t-2 border-gray-100">
-                <h3 className="font-bold text-gray-800 mb-4">Dịch vụ tại cửa hàng</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-[#FEFFAF]/30 rounded-xl border border-[#78A2D2]/20">
-                    <div className="text-3xl mb-2">🎁</div>
-                    <p className="text-sm font-semibold text-gray-700">Gói quà miễn phí</p>
-                  </div>
-                  <div className="text-center p-4 bg-[#78A2D2]/10 rounded-xl border border-[#78A2D2]/20">
-                    <div className="text-3xl mb-2">✅</div>
-                    <p className="text-sm font-semibold text-gray-700">Đổi trả 30 ngày</p>
-                  </div>
-                  <div className="text-center p-4 bg-[#FEFFAF]/30 rounded-xl border border-[#78A2D2]/20">
-                    <div className="text-3xl mb-2">🎮</div>
-                    <p className="text-sm font-semibold text-gray-700">Khu vui chơi</p>
-                  </div>
-                  <div className="text-center p-4 bg-[#78A2D2]/10 rounded-xl border border-[#78A2D2]/20">
-                    <div className="text-3xl mb-2">🅿️</div>
-                    <p className="text-sm font-semibold text-gray-700">Bãi đỗ xe miễn phí</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

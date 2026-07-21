@@ -1,51 +1,75 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router';
 import { useApp } from '../../context/AppContext';
+import { loyaltyApi } from '../../services/loyaltyApi';
+import { api } from '../../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { toast } from 'sonner@2.0.3';
 import {
   Star,
   Gift,
   TrendingUp,
   Award,
-  Calendar,
   ArrowLeft,
   ShoppingBag,
   Sparkles,
   Crown,
   Trophy,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
-interface Reward {
-  id: string;
-  name: string;
-  points: number;
-  image: string;
-  description: string;
-  category: 'voucher' | 'gift' | 'product';
-  stock: number;
-}
+
 
 interface PointHistory {
   id: string;
-  date: string;
   description: string;
   points: number;
-  type: 'earn' | 'redeem';
+  type: 'earn';
 }
 
 export default function LoyaltyPoints() {
   const { user } = useApp();
   const [selectedTab, setSelectedTab] = useState('overview');
 
-  // Mock data
+  // Real API state
+  const [realPoints, setRealPoints] = useState<number | null>(null);
+  const [realLifetimePoints, setRealLifetimePoints] = useState<number | null>(null);
+  const [pointsLoading, setPointsLoading] = useState(true);
+  const [pointsError, setPointsError] = useState<string | null>(null);
+
+  // Order-derived point history
+  const [pointHistory, setPointHistory] = useState<PointHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPoints = async () => {
+      setPointsLoading(true);
+      setPointsError(null);
+      try {
+        const data = await loyaltyApi.getMyPoints();
+        setRealPoints(data.totalPoints ?? 0);
+        setRealLifetimePoints(data.lifetimePoints ?? 0);
+      } catch (err: unknown) {
+        setPointsError(err instanceof Error ? err.message : 'Không thể tải điểm tích lũy.');
+        // Fall back to user context points
+        setRealPoints(user?.points ?? 0);
+      } finally {
+        setPointsLoading(false);
+      }
+    };
+    fetchPoints();
+  }, [user?.points]);
+
+  // Use real points if available, fallback to context
+  const currentPoints = realPoints ?? user?.points ?? 0;
+
+  // Mock/derived data
   const customerPoints = {
-    current: user?.points || 0,
-    lifetime: (user?.points || 0) + 1700,
+    current: currentPoints,
+    lifetime: realLifetimePoints ?? currentPoints,
     expiringSoon: 200,
     expiryDate: '2026-03-31',
     tier: user?.membershipTier || 'bronze',
@@ -57,19 +81,19 @@ export default function LoyaltyPoints() {
     bronze: {
       name: 'Đồng',
       icon: '🥉',
-      color: 'orange',
+      color: '#CD7F32',
       benefits: ['Tích 1 điểm cho 10,000₫', 'Sinh nhật giảm 5%'],
     },
     silver: {
       name: 'Bạc',
       icon: '🥈',
-      color: 'gray',
+      color: '#C0C0C0',
       benefits: ['Tích 1.5 điểm cho 10,000₫', 'Sinh nhật giảm 10%', 'Miễn phí ship đơn >500k'],
     },
     gold: {
       name: 'Vàng',
       icon: '👑',
-      color: 'yellow',
+      color: '#D4AF37',
       benefits: [
         'Tích 2 điểm cho 10,000₫',
         'Sinh nhật giảm 15%',
@@ -80,7 +104,7 @@ export default function LoyaltyPoints() {
     platinum: {
       name: 'Bạch kim',
       icon: '💎',
-      color: 'purple',
+      color: '#E5E4E2',
       benefits: [
         'Tích 3 điểm cho 10,000₫',
         'Sinh nhật giảm 20%',
@@ -91,108 +115,47 @@ export default function LoyaltyPoints() {
     },
   };
 
-  const rewards: Reward[] = [
-    {
-      id: 'r1',
-      name: 'Voucher giảm 50,000₫',
-      points: 500,
-      image: 'https://images.unsplash.com/photo-1607083206869-4c7672e72a8a?w=300',
-      description: 'Áp dụng cho đơn hàng từ 500,000₫',
-      category: 'voucher',
-      stock: 100,
-    },
-    {
-      id: 'r2',
-      name: 'Voucher giảm 100,000₫',
-      points: 900,
-      image: 'https://images.unsplash.com/photo-1607083206968-13611e3d76db?w=300',
-      description: 'Áp dụng cho đơn hàng từ 1,000,000₫',
-      category: 'voucher',
-      stock: 50,
-    },
-    {
-      id: 'r3',
-      name: 'Miễn phí vận chuyển',
-      points: 300,
-      image: 'https://images.unsplash.com/photo-1566576721346-d4a3b4eaeb55?w=300',
-      description: 'Freeship cho 1 đơn hàng bất kỳ',
-      category: 'voucher',
-      stock: 200,
-    },
-    {
-      id: 'r4',
-      name: 'Gấu bông Teddy',
-      points: 1200,
-      image: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=300',
-      description: 'Gấu bông Teddy 30cm đáng yêu',
-      category: 'gift',
-      stock: 20,
-    },
-    {
-      id: 'r5',
-      name: 'Set 12 bút màu cao cấp',
-      points: 800,
-      image: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?w=300',
-      description: 'Set bút màu chất lượng cao cho bé',
-      category: 'product',
-      stock: 30,
-    },
-    {
-      id: 'r6',
-      name: 'Bộ đồ chơi xếp hình mini',
-      points: 600,
-      image: 'https://images.unsplash.com/photo-1515488764276-beab7607c1e6?w=300',
-      description: 'Bộ đồ chơi xếp hình 50 chi tiết',
-      category: 'product',
-      stock: 40,
-    },
-  ];
 
-  const pointHistory: PointHistory[] = [
-    {
-      id: 'h1',
-      date: '2026-01-10',
-      description: 'Mua đơn hàng #KDL2026011401',
-      points: 260,
-      type: 'earn',
-    },
-    {
-      id: 'h2',
-      date: '2026-01-08',
-      description: 'Đổi Voucher giảm 50,000₫',
-      points: -500,
-      type: 'redeem',
-    },
-    {
-      id: 'h3',
-      date: '2026-01-05',
-      description: 'Mua đơn hàng #KDL2026010501',
-      points: 178,
-      type: 'earn',
-    },
-    {
-      id: 'h4',
-      date: '2025-12-28',
-      description: 'Mua đơn hàng #KDL2025122801',
-      points: 690,
-      type: 'earn',
-    },
-    {
-      id: 'h5',
-      date: '2025-12-25',
-      description: 'Điểm thưởng sinh nhật',
-      points: 200,
-      type: 'earn',
-    },
-  ];
 
-  const handleRedeemReward = (reward: Reward) => {
-    if (customerPoints.current >= reward.points) {
-      toast.success(`Đã đổi thành công: ${reward.name}!`);
-    } else {
-      toast.error('Bạn không đủ điểm để đổi quà này!');
-    }
-  };
+  // Fetch orders and derive point history
+  useEffect(() => {
+    const fetchOrderHistory = async () => {
+      setHistoryLoading(true);
+      try {
+        const response = await api.getMyOrders();
+        let orders: any[] = [];
+        if (response?.data && Array.isArray(response.data)) {
+          orders = response.data;
+        } else if (Array.isArray(response)) {
+          orders = response;
+        }
+
+        // Only DELIVERED / COMPLETED orders earn points
+        const earnedOrders = orders
+          .filter((o: any) => o.orderStatus === 'DELIVERED' || o.orderStatus === 'COMPLETED')
+          .sort((a: any, b: any) => b.orderId - a.orderId);
+
+        const history: PointHistory[] = earnedOrders.map((order: any) => {
+          const amount = order.totalAmount || 0;
+          const earned = Math.floor(amount); // 1 point per 1₫
+          return {
+            id: `order-${order.orderId}`,
+            description: `Đơn hàng #${order.orderId}`,
+            points: earned,
+            type: 'earn' as const,
+          };
+        });
+
+        setPointHistory(history);
+      } catch (err) {
+        console.error('Failed to fetch order history for loyalty:', err);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    fetchOrderHistory();
+  }, []);
+
 
   const tierProgress = (customerPoints.current / (customerPoints.current + customerPoints.pointsToNextTier)) * 100;
 
@@ -218,32 +181,44 @@ export default function LoyaltyPoints() {
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-            <TabsTrigger value="rewards">Đổi quà</TabsTrigger>
             <TabsTrigger value="history">Lịch sử điểm</TabsTrigger>
           </TabsList>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
             {/* Current Points Card */}
-            <Card className="bg-gradient-to-r from-indigo-600 to-blue-600 text-white">
+            <Card className="bg-gradient-to-br from-[#AF140B] via-[#D91810] to-[#AF140B] text-white shadow-2xl border-2 border-[#D4AF37]/30">
               <CardContent className="p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <p className="text-blue-100 mb-2">Điểm hiện tại</p>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-5xl font-bold">
-                        {customerPoints.current.toLocaleString('vi-VN')}
-                      </span>
-                      <span className="text-2xl text-blue-100">điểm</span>
-                    </div>
+                    <p className="text-white/90 mb-2">Điểm hiện tại</p>
+                    {pointsLoading ? (
+                      <div className="flex items-center gap-3">
+                        <Loader2 className="w-8 h-8 animate-spin text-white/70" />
+                        <span className="text-white/70 text-lg">Đang tải...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-5xl font-bold">
+                          {customerPoints.current.toLocaleString('vi-VN')}
+                        </span>
+                        <span className="text-2xl text-white/90">điểm</span>
+                      </div>
+                    )}
                   </div>
-                  <Star className="w-16 h-16 text-yellow-300 fill-yellow-300" />
+                  <Star className="w-16 h-16 text-[#FFD700] fill-[#FFD700] drop-shadow-lg" />
                 </div>
+                {pointsError && (
+                  <div className="flex items-center gap-2 text-yellow-200 text-xs mb-3">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    Dùng dữ liệu dự phòng — {pointsError}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-blue-100">
+                  <span className="text-white/90">
                     Tổng điểm tích lũy: {customerPoints.lifetime.toLocaleString('vi-VN')}
                   </span>
-                  <span className="text-yellow-300 flex items-center gap-1">
+                  <span className="text-[#FFD700] flex items-center gap-1">
                     <Sparkles className="w-4 h-4" />
                     {customerPoints.expiringSoon} điểm hết hạn {customerPoints.expiryDate}
                   </span>
@@ -255,7 +230,7 @@ export default function LoyaltyPoints() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Crown className="w-5 h-5 text-yellow-500" />
+                  <Crown className="w-5 h-5 text-[#D4AF37]" />
                   Hạng thành viên
                 </CardTitle>
               </CardHeader>
@@ -272,7 +247,7 @@ export default function LoyaltyPoints() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-600">Cần thêm</p>
-                      <p className="font-bold text-indigo-600">
+                      <p className="font-bold text-[#AF140B]">
                         {customerPoints.pointsToNextTier} điểm
                       </p>
                     </div>
@@ -287,13 +262,13 @@ export default function LoyaltyPoints() {
                 </div>
 
                 {/* Current Tier Benefits */}
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <p className="font-medium mb-2">Quyền lợi hiện tại:</p>
+                <div className="bg-[#FFF9E6] p-4 rounded-lg border border-[#D4AF37]/20">
+                  <p className="font-medium mb-2 text-[#B8860B]">Quyền lợi hiện tại:</p>
                   <ul className="space-y-2">
                     {tierBenefits[customerPoints.tier as keyof typeof tierBenefits].benefits.map(
                       (benefit, index) => (
                         <li key={index} className="flex items-center gap-2 text-sm">
-                          <Award className="w-4 h-4 text-green-600" />
+                          <Award className="w-4 h-4 text-[#D4AF37]" />
                           {benefit}
                         </li>
                       )
@@ -313,11 +288,12 @@ export default function LoyaltyPoints() {
                   {Object.entries(tierBenefits).map(([key, tier]) => (
                     <div
                       key={key}
-                      className={`p-4 rounded-lg border-2 ${
-                        key === customerPoints.tier
-                          ? 'border-indigo-600 bg-indigo-50'
-                          : 'border-gray-200'
-                      }`}
+                      className={`p-4 rounded-lg border-2 transition-all ${key === customerPoints.tier
+                        ? key === 'gold'
+                          ? 'border-[#D4AF37] bg-gradient-to-br from-[#FFF9E6] to-[#FFFDF7] shadow-lg shadow-[#D4AF37]/20'
+                          : 'border-[#AF140B] bg-[#FFE5E3]'
+                        : 'border-gray-200 hover:border-gray-300'
+                        }`}
                     >
                       <div className="text-center mb-3">
                         <span className="text-4xl">{tier.icon}</span>
@@ -392,71 +368,6 @@ export default function LoyaltyPoints() {
             </Card>
           </TabsContent>
 
-          {/* Rewards Tab */}
-          <TabsContent value="rewards">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rewards.map((reward) => (
-                <Card key={reward.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-4">
-                    <img
-                      src={reward.image}
-                      alt={reward.name}
-                      className="w-full h-48 object-cover rounded-lg mb-4"
-                    />
-                    <div className="mb-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <h3 className="font-bold text-lg">{reward.name}</h3>
-                        <Badge
-                          variant={
-                            reward.category === 'voucher'
-                              ? 'default'
-                              : reward.category === 'gift'
-                              ? 'secondary'
-                              : 'outline'
-                          }
-                        >
-                          {reward.category === 'voucher'
-                            ? 'Voucher'
-                            : reward.category === 'gift'
-                            ? 'Quà tặng'
-                            : 'Sản phẩm'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3">
-                        {reward.description}
-                      </p>
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-1">
-                          <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                          <span className="font-bold text-lg text-indigo-600">
-                            {reward.points.toLocaleString('vi-VN')}
-                          </span>
-                          <span className="text-sm text-gray-500">điểm</span>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          Còn {reward.stock}
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => handleRedeemReward(reward)}
-                      disabled={customerPoints.current < reward.points}
-                      className="w-full"
-                    >
-                      {customerPoints.current >= reward.points ? (
-                        <>
-                          <Gift className="w-4 h-4 mr-2" />
-                          Đổi ngay
-                        </>
-                      ) : (
-                        `Cần thêm ${(reward.points - customerPoints.current).toLocaleString('vi-VN')} điểm`
-                      )}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
 
           {/* History Tab */}
           <TabsContent value="history">
@@ -465,45 +376,40 @@ export default function LoyaltyPoints() {
                 <CardTitle>Lịch sử giao dịch điểm</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {pointHistory.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            item.type === 'earn'
-                              ? 'bg-green-100'
-                              : 'bg-orange-100'
-                          }`}
-                        >
-                          {item.type === 'earn' ? (
+                {historyLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#AF140B] mb-3" />
+                    <p className="text-gray-500">Đang tải lịch sử...</p>
+                  </div>
+                ) : pointHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <ShoppingBag className="w-12 h-12 text-gray-300 mb-3" />
+                    <p className="text-gray-500 font-medium">Chưa có lịch sử tích điểm</p>
+                    <p className="text-gray-400 text-sm mt-1">Điểm sẽ được tích khi đơn hàng được giao thành công</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {pointHistory.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-100">
                             <TrendingUp className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <Gift className="w-5 h-5 text-orange-600" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.description}</p>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(item.date).toLocaleDateString('vi-VN')}
+                          </div>
+                          <div>
+                            <p className="font-medium">{item.description}</p>
+                            <p className="text-xs text-gray-400">Tích điểm từ đơn hàng</p>
                           </div>
                         </div>
+                        <div className="text-lg font-bold text-green-600">
+                          +{item.points.toLocaleString('vi-VN')}
+                        </div>
                       </div>
-                      <div
-                        className={`text-lg font-bold ${
-                          item.type === 'earn' ? 'text-green-600' : 'text-orange-600'
-                        }`}
-                      >
-                        {item.type === 'earn' ? '+' : ''}
-                        {item.points.toLocaleString('vi-VN')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useApp } from '../../context/AppContext';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -65,7 +65,7 @@ export default function CustomerDashboard() {
                 </div>
                 <p className="text-blue-100 mb-4">ID: {user?.id || 'N/A'}</p>
                 <div className="flex items-center gap-2">
-                  <Star className="w-5 h-5 fill-yellow-300 text-yellow-300" />
+                  <Star className="w-5 h-5 fill-[#FFD700] text-[#FFD700]" />
                   <span className="text-2xl font-bold">{customerStats.points.toLocaleString('vi-VN')}</span>
                   <span className="text-blue-100">điểm</span>
                 </div>

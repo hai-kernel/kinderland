@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -142,13 +142,13 @@ export default function OrderManagement() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+        return 'bg-[#FFE5E3] text-[#AF140B] border-[#AF140B]/30';
       case 'confirmed':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return 'bg-[#D91810]/20 text-[#8D0F08] border-[#D91810]/30';
       case 'shipping':
-        return 'bg-purple-100 text-purple-800 border-purple-300';
+        return 'bg-gray-100 text-gray-800 border-gray-300';
       case 'delivered':
-        return 'bg-green-100 text-green-800 border-green-300';
+        return 'bg-[#8D0F08]/20 text-[#8D0F08] border-[#8D0F08]/30';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-300';
       default:
@@ -218,7 +218,7 @@ export default function OrderManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-full bg-white">
       {/* Header */}
       <header className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -239,29 +239,29 @@ export default function OrderManagement() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <Card>
+          <Card className="bg-white border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Chờ xử lý</p>
-                  <p className="text-2xl font-bold text-yellow-600">{getOrdersByStatus('pending')}</p>
+                  <p className="text-2xl font-bold text-[#AF140B]">{getOrdersByStatus('pending')}</p>
                 </div>
-                <Clock className="w-8 h-8 text-yellow-600" />
+                <Clock className="w-8 h-8 text-[#AF140B]" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Đã xác nhận</p>
-                  <p className="text-2xl font-bold text-blue-600">{getOrdersByStatus('confirmed')}</p>
+                  <p className="text-2xl font-bold text-[#D91810]">{getOrdersByStatus('confirmed')}</p>
                 </div>
-                <CheckCircle2 className="w-8 h-8 text-blue-600" />
+                <CheckCircle2 className="w-8 h-8 text-[#D91810]" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -272,18 +272,18 @@ export default function OrderManagement() {
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Hoàn thành</p>
-                  <p className="text-2xl font-bold text-green-600">{getOrdersByStatus('delivered')}</p>
+                  <p className="text-2xl font-bold text-[#8D0F08]">{getOrdersByStatus('delivered')}</p>
                 </div>
-                <Package className="w-8 h-8 text-green-600" />
+                <Package className="w-8 h-8 text-[#8D0F08]" />
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-white border border-gray-200">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -297,7 +297,7 @@ export default function OrderManagement() {
         </div>
 
         {/* Filters */}
-        <Card className="mb-6">
+        <Card className="mb-6 bg-white border border-gray-200">
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -334,7 +334,7 @@ export default function OrderManagement() {
         </Card>
 
         {/* Orders Table */}
-        <Card>
+        <Card className="bg-white border border-gray-200">
           <CardHeader>
             <CardTitle>Danh sách đơn hàng</CardTitle>
           </CardHeader>
@@ -455,7 +455,7 @@ export default function OrderManagement() {
               <div className="space-y-6">
                 {/* Customer Info */}
                 <div className="grid grid-cols-2 gap-4">
-                  <Card>
+                  <Card className="bg-white border border-gray-200">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <User className="w-4 h-4" />
@@ -478,7 +478,7 @@ export default function OrderManagement() {
                     </CardContent>
                   </Card>
 
-                  <Card>
+                  <Card className="bg-white border border-gray-200">
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm flex items-center gap-2">
                         <MapPin className="w-4 h-4" />
@@ -498,7 +498,7 @@ export default function OrderManagement() {
                 </div>
 
                 {/* Order Items */}
-                <Card>
+                <Card className="bg-white border border-gray-200">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Package className="w-4 h-4" />

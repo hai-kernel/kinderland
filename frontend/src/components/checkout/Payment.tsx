@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router';
 import { useApp } from '../../context/AppContext';
 import { CreditCard, Building2, Loader2 } from 'lucide-react';
 

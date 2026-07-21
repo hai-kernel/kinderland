@@ -1,338 +1,357 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useApp } from '../../context/AppContext';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Button } from '../ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import {
-  Package,
-  Truck,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Eye,
-  Download,
-  RotateCcw,
-  ArrowLeft,
-} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 
-interface Order {
-  id: string;
-  orderNumber: string;
-  date: string;
-  status: 'pending' | 'processing' | 'shipping' | 'delivered' | 'cancelled';
-  total: number;
-  items: {
-    id: string;
-    name: string;
-    image: string;
-    quantity: number;
-    price: number;
-  }[];
-  shippingAddress: string;
-  paymentMethod: string;
-}
+import { Button } from '../ui/button';
+import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
+import { Package, ArrowLeft, AlertCircle, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { api, authenticatedFetch } from '../../services/api';
+import { reviewApi } from '../../services/reviewApi';
+import { productApi } from '../../services/productApi';
+import { toast } from 'sonner';
+
+import { Order, OrderItemDTO, OrderStatus, ReturnRequest, TAB_LIST, PAGE_SIZE } from './order/orderTypes';
+import OrderCard from './order/OrderCard';
+import ReturnCard from './order/ReturnCard';
+import ReviewDialog from './order/ReviewDialog';
 
 export default function OrderHistory() {
-  const { user } = useApp();
-  const [selectedTab, setSelectedTab] = useState('all');
+  const navigate = useNavigate();
+  const [selectedTab, setSelectedTab] = useState('PENDING');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
-  // Mock orders data
-  const mockOrders: Order[] = [
-    {
-      id: 'order-1',
-      orderNumber: 'KDL2026011401',
-      date: '2026-01-10',
-      status: 'delivered',
-      total: 1299000,
-      items: [
-        {
-          id: 'p1',
-          name: 'LEGO City Police Station',
-          image: 'https://images.unsplash.com/photo-1587654780291-39c9404d746b?w=200',
-          quantity: 1,
-          price: 1299000,
-        },
-      ],
-      shippingAddress: '123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
-      paymentMethod: 'Thẻ tín dụng',
-    },
-    {
-      id: 'order-2',
-      orderNumber: 'KDL2026011301',
-      date: '2026-01-08',
-      status: 'shipping',
-      total: 2150000,
-      items: [
-        {
-          id: 'p2',
-          name: 'Barbie Dreamhouse Adventures',
-          image: 'https://images.unsplash.com/photo-1571609190641-1ebf01b57a67?w=200',
-          quantity: 1,
-          price: 1850000,
-        },
-        {
-          id: 'p3',
-          name: 'Hot Wheels Track Set',
-          image: 'https://images.unsplash.com/photo-1558060370-d644479cb6f7?w=200',
-          quantity: 1,
-          price: 300000,
-        },
-      ],
-      shippingAddress: '123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
-      paymentMethod: 'COD',
-    },
-    {
-      id: 'order-3',
-      orderNumber: 'KDL2026010501',
-      date: '2026-01-05',
-      status: 'processing',
-      total: 890000,
-      items: [
-        {
-          id: 'p4',
-          name: 'Monopoly Classic Board Game',
-          image: 'https://images.unsplash.com/photo-1566694271453-390536dd1f0d?w=200',
-          quantity: 1,
-          price: 890000,
-        },
-      ],
-      shippingAddress: '123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
-      paymentMethod: 'Chuyển khoản',
-    },
-    {
-      id: 'order-4',
-      orderNumber: 'KDL2025122801',
-      date: '2025-12-28',
-      status: 'delivered',
-      total: 3450000,
-      items: [
-        {
-          id: 'p5',
-          name: 'LEGO Star Wars Millennium Falcon',
-          image: 'https://images.unsplash.com/photo-1585366119957-e9730b6d0f60?w=200',
-          quantity: 1,
-          price: 3450000,
-        },
-      ],
-      shippingAddress: '123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh',
-      paymentMethod: 'Thẻ tín dụng',
-    },
-  ];
+  // Review state
+  const [reviewItem, setReviewItem] = useState<OrderItemDTO | null>(null);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewHover, setReviewHover] = useState(0);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewedSkus, setReviewedSkus] = useState<Set<number>>(new Set());
 
-  const getStatusInfo = (status: Order['status']) => {
-    const statusMap = {
-      pending: {
-        label: 'Chờ xác nhận',
-        icon: Clock,
-        color: 'bg-gray-100 text-gray-800',
-        iconColor: 'text-gray-600',
-      },
-      processing: {
-        label: 'Đang xử lý',
-        icon: Package,
-        color: 'bg-blue-100 text-blue-800',
-        iconColor: 'text-blue-600',
-      },
-      shipping: {
-        label: 'Đang giao hàng',
-        icon: Truck,
-        color: 'bg-orange-100 text-orange-800',
-        iconColor: 'text-orange-600',
-      },
-      delivered: {
-        label: 'Đã giao',
-        icon: CheckCircle,
-        color: 'bg-green-100 text-green-800',
-        iconColor: 'text-green-600',
-      },
-      cancelled: {
-        label: 'Đã hủy',
-        icon: XCircle,
-        color: 'bg-red-100 text-red-800',
-        iconColor: 'text-red-600',
-      },
-    };
-    return statusMap[status];
+  // Product images
+  const [productImageMap, setProductImageMap] = useState<Map<number, string>>(new Map());
+
+  // Returns
+  const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
+  const [returnsLoading, setReturnsLoading] = useState(false);
+
+  // ── Data fetching ──
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await api.getMyOrders();
+      let data: Order[] = [];
+      if (response?.data && Array.isArray(response.data)) {
+        data = response.data;
+      } else if (Array.isArray(response)) {
+        data = response;
+      }
+      data.sort((a, b) => b.orderId - a.orderId);
+      setOrders(data);
+      setError(null);
+      await preCheckReviewedSkus(data);
+      await fetchProductImages();
+    } catch (err: any) {
+      console.error('Error fetching orders:', err);
+      setError('Không thể tải danh sách đơn hàng. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const preCheckReviewedSkus = async (orderList: Order[]) => {
+    const deliveredOrders = orderList.filter((o) => o.orderStatus === 'DELIVERED');
+    if (deliveredOrders.length === 0) return;
+
+    const skuIds = new Set<number>();
+    for (const order of deliveredOrders) {
+      for (const item of order.items || []) skuIds.add(item.skuId);
+    }
+    if (skuIds.size === 0) return;
+
+    let myAccountId: number | null = null;
+    try {
+      const profileRes = await authenticatedFetch('/api/v1/account/me');
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        myAccountId = profileData?.data?.id || profileData?.id || null;
+      }
+    } catch { return; }
+    if (!myAccountId) return;
+
+    const alreadyReviewed = new Set<number>();
+    const skuArray = Array.from(skuIds);
+    for (let i = 0; i < skuArray.length; i += 5) {
+      const batch = skuArray.slice(i, i + 5);
+      const results = await Promise.allSettled(batch.map((id) => reviewApi.getBySku(id)));
+      results.forEach((result, idx) => {
+        if (result.status === 'fulfilled' && result.value.length > 0) {
+          if (result.value.find((r) => r.accountId === myAccountId)) {
+            alreadyReviewed.add(batch[idx]);
+          }
+        }
+      });
+    }
+    if (alreadyReviewed.size > 0) {
+      setReviewedSkus((prev) => new Set([...prev, ...alreadyReviewed]));
+    }
+  };
+
+  const fetchProductImages = async () => {
+    try {
+      const allProducts = await productApi.getAll();
+      const imgMap = new Map<number, string>();
+      for (const p of allProducts) {
+        if (p.id && p.imageUrl) imgMap.set(p.id, p.imageUrl);
+      }
+      if (imgMap.size > 0) setProductImageMap(imgMap);
+    } catch (err) {
+      console.error('Failed to fetch product images:', err);
+    }
+  };
+
+  const fetchReturnRequests = async () => {
+    try {
+      setReturnsLoading(true);
+      const res = await authenticatedFetch('/api/v1/return-requests/my-requests?page=0&size=100');
+      if (res.ok) {
+        const json = await res.json();
+        const data = json?.data?.content || json?.data || [];
+        setReturnRequests(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch return requests:', err);
+    } finally {
+      setReturnsLoading(false);
+    }
+  };
+
+  const locationKey = useLocation().key;
+
+  useEffect(() => { fetchOrders(); fetchReturnRequests(); }, [locationKey]);
+
+  // Auto-refresh: visibilitychange + polling every 15s
+  useEffect(() => {
+    const refetch = () => { fetchOrders(); fetchReturnRequests(); };
+
+    // Refresh when tab becomes visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') refetch();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Light polling every 15s (only when tab is visible)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') refetch();
+    }, 15000);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => { setPage(1); }, [selectedTab]);
+
+  // ── Handlers ──
+
+  const handleCancelOrder = async (orderId: number) => {
+    if (!window.confirm('Bạn có chắc chắn muốn hủy đơn hàng này không?')) return;
+    try {
+      await api.cancelOrder(orderId);
+      setOrders((prev) =>
+        prev.map((o) => o.orderId === orderId ? { ...o, orderStatus: 'CANCELLED' as OrderStatus } : o)
+      );
+      toast.success('Hủy đơn hàng thành công');
+    } catch (err: any) {
+      toast.error('Không thể hủy đơn hàng: ' + (err.message || 'Lỗi không xác định'));
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewItem || reviewSubmitting) return;
+    setReviewSubmitting(true);
+    try {
+      const res = await authenticatedFetch(
+        `/api/v1/reviews/sku/${reviewItem.skuId}?rating=${reviewRating}&comment=${encodeURIComponent(reviewComment)}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' } }
+      );
+      if (!res.ok) {
+        if (res.status === 409) {
+          toast.info('Bạn đã đánh giá sản phẩm này rồi');
+          setReviewedSkus((prev) => new Set(prev).add(reviewItem.skuId));
+          setReviewItem(null);
+          return;
+        }
+        const errText = await res.text();
+        throw new Error(errText || `Lỗi ${res.status}`);
+      }
+      toast.success('Đánh giá thành công!');
+      setReviewedSkus((prev) => new Set(prev).add(reviewItem.skuId));
+      setReviewItem(null);
+    } catch (err: any) {
+      toast.error('Không thể gửi đánh giá: ' + (err.message || 'Lỗi'));
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
+
+  // ── Filtering ──
+
+  const ordersWithReturns = new Set(returnRequests.map((r) => r.orderId));
+  const ordersWithPendingReturns = new Set(
+    returnRequests.filter((r) => r.returnStatus === 'PENDING').map((r) => r.orderId)
+  );
 
   const filterOrders = (status: string) => {
-    if (status === 'all') return mockOrders;
-    return mockOrders.filter((order) => order.status === status);
+    if (!Array.isArray(orders)) return [];
+    if (status === 'RETURNED') return [];
+    if (status === 'DELIVERED') return orders.filter((o) => o.orderStatus === 'DELIVERED' && !ordersWithReturns.has(o.orderId));
+    if (status === 'PENDING_RETURN') return orders.filter((o) => o.orderStatus === 'DELIVERED' && ordersWithPendingReturns.has(o.orderId));
+    if (status === 'PENDING') return orders.filter((o) => o.orderStatus === 'PENDING' || o.orderStatus === 'PAID');
+    return orders.filter((o) => o.orderStatus === status);
   };
 
-  const OrderCard = ({ order }: { order: Order }) => {
-    const statusInfo = getStatusInfo(order.status);
-    const StatusIcon = statusInfo.icon;
+  const getTabCount = (tabValue: string) => {
+    if (tabValue === 'RETURNED') return returnRequests.length;
+    return filterOrders(tabValue).length;
+  };
 
+  const filtered = filterOrders(selectedTab);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  // ── Render ──
+
+  if (loading) {
     return (
-      <Card className="mb-4 hover:shadow-md transition-shadow">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-lg mb-2">
-                Đơn hàng #{order.orderNumber}
-              </CardTitle>
-              <p className="text-sm text-gray-500">
-                Đặt ngày: {new Date(order.date).toLocaleDateString('vi-VN')}
-              </p>
-            </div>
-            <Badge className={statusInfo.color}>
-              <StatusIcon className={`w-4 h-4 mr-1 ${statusInfo.iconColor}`} />
-              {statusInfo.label}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Order Items */}
-          <div className="space-y-3 mb-4">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex items-center gap-4">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-16 h-16 object-cover rounded-lg"
-                />
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{item.name}</p>
-                  <p className="text-sm text-gray-500">
-                    Số lượng: {item.quantity} × {item.price.toLocaleString('vi-VN')}₫
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Order Summary */}
-          <div className="border-t pt-3 mb-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-gray-600">Phương thức thanh toán:</span>
-              <span className="text-sm font-medium">{order.paymentMethod}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Tổng cộng:</span>
-              <span className="text-lg font-bold text-indigo-600">
-                {order.total.toLocaleString('vi-VN')}₫
-              </span>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button variant="outline" className="flex-1" size="sm">
-              <Eye className="w-4 h-4 mr-2" />
-              Xem chi tiết
-            </Button>
-            {order.status === 'delivered' && (
-              <>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Hóa đơn
-                </Button>
-                <Button variant="outline" size="sm">
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Mua lại
-                </Button>
-              </>
-            )}
-            {order.status === 'shipping' && (
-              <Button variant="outline" size="sm">
-                <Truck className="w-4 h-4 mr-2" />
-                Theo dõi
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 text-[#AF140B] animate-spin mb-4" />
+        <p className="text-gray-500 font-medium">Đang tải đơn hàng...</p>
+      </div>
     );
-  };
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
+        <AlertCircle className="w-12 h-12 text-rose-400 mb-4" />
+        <p className="text-rose-600 font-bold text-lg mb-2">Đã xảy ra lỗi</p>
+        <p className="text-gray-500 mb-6">{error}</p>
+        <Button onClick={fetchOrders} className="bg-[#AF140B] hover:bg-[#8D0F08] text-white rounded-xl">Thử lại</Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="mb-6">
-          <Link to="/account">
-            <Button variant="ghost" className="mb-4">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Quay lại tài khoản
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Đơn hàng của tôi</h1>
-          <p className="text-gray-600">Quản lý và theo dõi các đơn hàng của bạn</p>
-        </div>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      {/* Back */}
+      <button onClick={() => navigate('/account')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-[#AF140B] mb-6 transition-colors">
+        <ArrowLeft className="w-4 h-4" /> Quay lại tài khoản
+      </button>
 
-        {/* Tabs for filtering orders */}
-        <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="all">
-              Tất cả ({mockOrders.length})
-            </TabsTrigger>
-            <TabsTrigger value="processing">
-              Đang xử lý ({filterOrders('processing').length})
-            </TabsTrigger>
-            <TabsTrigger value="shipping">
-              Đang giao ({filterOrders('shipping').length})
-            </TabsTrigger>
-            <TabsTrigger value="delivered">
-              Đã giao ({filterOrders('delivered').length})
-            </TabsTrigger>
-            <TabsTrigger value="cancelled">
-              Đã hủy ({filterOrders('cancelled').length})
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="mt-6">
-            {mockOrders.length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-4">Bạn chưa có đơn hàng nào</p>
-                  <Link to="/products">
-                    <Button>Mua sắm ngay</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              mockOrders.map((order) => <OrderCard key={order.id} order={order} />)
-            )}
-          </TabsContent>
-
-          <TabsContent value="processing" className="mt-6">
-            {filterOrders('processing').map((order) => (
-              <OrderCard key={order.id} order={order} />
-            ))}
-          </TabsContent>
-
-          <TabsContent value="shipping" className="mt-6">
-            {filterOrders('shipping').map((order) => (
-              <OrderCard key={order.id} order={order} />
-            ))}
-          </TabsContent>
-
-          <TabsContent value="delivered" className="mt-6">
-            {filterOrders('delivered').map((order) => (
-              <OrderCard key={order.id} order={order} />
-            ))}
-          </TabsContent>
-
-          <TabsContent value="cancelled" className="mt-6">
-            {filterOrders('cancelled').length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center">
-                  <XCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">Không có đơn hàng đã hủy</p>
-                </CardContent>
-              </Card>
-            ) : (
-              filterOrders('cancelled').map((order) => (
-                <OrderCard key={order.id} order={order} />
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900 tracking-tight">Đơn hàng của tôi</h1>
+        <p className="text-gray-500 mt-1 italic">Quản lý và theo dõi hành trình niềm vui của bé</p>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={selectedTab} onValueChange={setSelectedTab} className="mb-8">
+        <TabsList className="bg-white border border-gray-100 p-1.5 rounded-2xl shadow-sm w-full flex overflow-x-auto">
+          {TAB_LIST.map((tab) => {
+            const count = getTabCount(tab.value);
+            return (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="flex-1 min-w-fit rounded-xl data-[state=active]:bg-[#AF140B] data-[state=active]:text-white data-[state=active]:shadow-md font-bold text-xs sm:text-sm py-2.5 transition-all"
+              >
+                {tab.label}
+                {count > 0 && (
+                  <span className="ml-1.5 bg-white/20 data-[state=active]:bg-white/30 px-1.5 py-0.5 rounded-full text-[10px]">
+                    {count}
+                  </span>
+                )}
+              </TabsTrigger>
+            );
+          })}
+        </TabsList>
+      </Tabs>
+
+      {/* Content */}
+      {selectedTab === 'RETURNED' ? (
+        returnsLoading ? (
+          <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 text-[#AF140B] animate-spin" /></div>
+        ) : returnRequests.length === 0 ? (
+          <EmptyState />
+        ) : (
+          returnRequests.map((ret) => <ReturnCard key={ret.returnId} ret={ret} />)
+        )
+      ) : paged.length === 0 ? (
+        <EmptyState />
+      ) : (
+        <>
+          {paged.map((order) => (
+            <OrderCard
+              key={order.orderId}
+              order={order}
+              reviewedSkus={reviewedSkus}
+              productImageMap={productImageMap}
+              ordersWithReturns={ordersWithReturns}
+              onCancel={handleCancelOrder}
+              onReview={(item) => {
+                setReviewItem(item);
+                setReviewRating(5);
+                setReviewHover(0);
+                setReviewComment('');
+              }}
+              onViewReturn={() => setSelectedTab('RETURNED')}
+            />
+          ))}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <Button variant="outline" size="sm" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="rounded-xl">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-sm text-gray-500 font-medium">Trang {safePage} / {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)} className="rounded-xl">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Review Dialog */}
+      <ReviewDialog
+        reviewItem={reviewItem}
+        reviewRating={reviewRating}
+        reviewHover={reviewHover}
+        reviewComment={reviewComment}
+        reviewSubmitting={reviewSubmitting}
+        onClose={() => setReviewItem(null)}
+        onRatingChange={setReviewRating}
+        onHoverChange={setReviewHover}
+        onCommentChange={setReviewComment}
+        onSubmit={handleSubmitReview}
+      />
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+        <Package className="w-10 h-10 text-gray-300" />
+      </div>
+      <p className="text-gray-500 font-bold text-lg mb-1">Không tìm thấy đơn hàng</p>
+      <p className="text-gray-400 text-sm">Hãy bắt đầu mua sắm để tạo đơn hàng đầu tiên!</p>
     </div>
   );
 }

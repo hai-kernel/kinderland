@@ -28,6 +28,7 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
   const logoutAdmin = () => {
     setAdminUser(null);
     localStorage.removeItem('adminUser');
+    localStorage.removeItem('storeId');
   };
 
   // Load admin user from localStorage on mount

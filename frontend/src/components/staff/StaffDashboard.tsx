@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useAdmin } from '../../context/AdminContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -29,7 +29,7 @@ export default function StaffDashboard() {
   const handleLogout = () => {
     logoutAdmin();
     toast.success('Đã đăng xuất');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   // Get current store data

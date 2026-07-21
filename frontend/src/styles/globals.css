@@ -3,93 +3,107 @@
 :root {
   --font-size: 16px;
   
-  /* KINDERLAND COLOR THEME */
-  /* Light Blue Primary - #78A2D2 */
-  /* Cream Yellow Secondary - #FEFFAF */
+  /* KINDERLAND RED + GOLD COLOR SYSTEM */
+  /* Primary Red: #AF140B */
+  /* Accent Gold: #D4AF37 */
+  /* Red (70-75%) + Gold (15-20%) + Neutral (rest) */
   
   --background: #FFFFFF;
-  --foreground: #2C2C2C;
+  --foreground: #4A4A4A;
   
-  /* Primary - Light Blue */
-  --card: #78A2D2;
-  --card-foreground: #FFFFFF;
+  /* Primary - Bright Red */
+  --card: #FFFFFF;
+  --card-foreground: #4A4A4A;
   
   /* Popover */
   --popover: #FFFFFF;
-  --popover-foreground: #2C2C2C;
+  --popover-foreground: #4A4A4A;
   
-  /* Primary - Light Blue */
-  --primary: #78A2D2;
+  /* Primary - Bright Red */
+  --primary: #AF140B;
   --primary-foreground: #FFFFFF;
-  --primary-hover: #6A94C4;
+  --primary-hover: #8D0F08;
+  --primary-light: #D91810;
   
-  /* Secondary - Cream Yellow */
-  --secondary: #FEFFAF;
-  --secondary-foreground: #2C2C2C;
+  /* Gold System - Premium Accents */
+  --gold: #D4AF37;
+  --gold-light: #FFD700;
+  --gold-dark: #B8860B;
+  --gold-foreground: #4A4A4A;
+  --gold-bg: #FFF9E6;
+  
+  /* Secondary - Lighter Red for accents */
+  --secondary: #FFE5E3;
+  --secondary-foreground: #AF140B;
   
   /* Muted */
-  --muted: #F5F5F5;
-  --muted-foreground: #6B6B6B;
+  --muted: #F8F9FA;
+  --muted-foreground: #8B8B8B;
   
-  /* Accent - Cream Yellow */
-  --accent: #FEFFAF;
-  --accent-foreground: #2C2C2C;
+  /* Accent - Red tints */
+  --accent: #FFE5E3;
+  --accent-foreground: #AF140B;
   
   /* Dark */
-  --dark: #2C2C2C;
+  --dark: #4A4A4A;
   --dark-foreground: #FFFFFF;
   
-  /* Success */
-  --success: #10B981;
-  --success-foreground: #ffffff;
+  /* Success - Use red tint */
+  --success: #AF140B;
+  --success-foreground: #FFFFFF;
   
-  /* Warning */
-  --warning: #F59E0B;
-  --warning-foreground: #ffffff;
+  /* Warning - Use red */
+  --warning: #D91810;
+  --warning-foreground: #FFFFFF;
   
-  /* Destructive */
-  --destructive: #EF4444;
-  --destructive-foreground: #ffffff;
+  /* Destructive - Red */
+  --destructive: #AF140B;
+  --destructive-foreground: #FFFFFF;
   
   /* Borders */
-  --border: rgba(120, 162, 210, 0.2);
-  --input: rgba(120, 162, 210, 0.25);
+  --border: rgba(74, 74, 74, 0.12);
+  --input: rgba(74, 74, 74, 0.18);
   --input-background: #FFFFFF;
-  --switch-background: #78A2D2;
+  --switch-background: #AF140B;
   
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
-  --ring: #78A2D2;
+  --ring: #AF140B;
   
-  /* Charts */
-  --chart-1: #78A2D2;
-  --chart-2: #FEFFAF;
-  --chart-3: #6A94C4;
-  --chart-4: #FFF8DC;
-  --chart-5: #5A84B4;
+  /* Charts - Red variations */
+  --chart-1: #AF140B;
+  --chart-2: #D91810;
+  --chart-3: #8D0F08;
+  --chart-4: #FFE5E3;
+  --chart-5: #FFC9C5;
   
   --radius: 1rem;
   
   /* Sidebar */
-  --sidebar: #78A2D2;
+  --sidebar: #AF140B;
   --sidebar-foreground: #FFFFFF;
-  --sidebar-primary: #FEFFAF;
-  --sidebar-primary-foreground: #2C2C2C;
-  --sidebar-accent: #6A94C4;
+  --sidebar-primary: #FFE5E3;
+  --sidebar-primary-foreground: #AF140B;
+  --sidebar-accent: #D91810;
   --sidebar-accent-foreground: #FFFFFF;
   --sidebar-border: rgba(255, 255, 255, 0.2);
-  --sidebar-ring: #FEFFAF;
+  --sidebar-ring: #FFE5E3;
   
   /* Hero overlay */
-  --hero-overlay: rgba(120, 162, 210, 0.15);
-  --hero-text: #2C2C2C;
+  --hero-overlay: rgba(175, 20, 11, 0.08);
+  --hero-text: #4A4A4A;
   
-  /* Badge colors */
-  --badge-popular: #78A2D2;
-  --badge-new: #FEFFAF;
-  --badge-sale: #F59E0B;
+  /* Badge colors - Red + Gold based */
+  --badge-bestseller: #D4AF37; /* Gold for Best Seller */
+  --badge-premium: #B8860B; /* Dark Gold for Premium */
+  --badge-new: #AF140B; /* Red for New */
+  --badge-sale: #D91810; /* Bright Red for Sale */
+  
+  /* Light warm background */
+  --background-warm: #FFFDF7;
+  --background-red-light: #FFE5E3;
 }
 
 .dark {

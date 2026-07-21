@@ -30,7 +30,7 @@ export function TestimonialsSection() {
   ];
 
   return (
-    <section className="relative bg-[#78A2D2] py-20 overflow-hidden">
+    <section className="relative bg-[#AF140B] py-20 overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-5">
         <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
@@ -50,7 +50,7 @@ export function TestimonialsSection() {
           {/* Left Content */}
           <div className="lg:col-span-4 text-white">
             <div className="mb-4">
-              <span className="inline-block px-4 py-2 bg-white/20 text-[#FEFFAF] rounded-full text-sm font-bold tracking-wider">
+              <span className="inline-block px-4 py-2 bg-white/20 text-white rounded-full text-sm font-bold tracking-wider">
                 CHẤT LƯỢNG DỊCH VỤ
               </span>
             </div>
@@ -66,7 +66,7 @@ export function TestimonialsSection() {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4 mt-8">
               <div className="text-center">
-                <div className="text-3xl font-bold text-[#FEFFAF] mb-1">2000+</div>
+                <div className="text-3xl font-bold text-white mb-1">2000+</div>
                 <div className="text-white/70 text-sm">Khách hàng</div>
               </div>
               <div className="text-center">
@@ -74,7 +74,7 @@ export function TestimonialsSection() {
                 <div className="text-white/70 text-sm">Đánh giá</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-[#FEFFAF] mb-1">99%</div>
+                <div className="text-3xl font-bold text-white mb-1">99%</div>
                 <div className="text-white/70 text-sm">Hài lòng</div>
               </div>
             </div>
@@ -90,16 +90,16 @@ export function TestimonialsSection() {
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   {/* Quote Icon */}
-                  <div className="absolute -top-4 -right-4 bg-[#FEFFAF] rounded-2xl p-4 shadow-xl group-hover:scale-110 transition-transform">
-                    <Quote className="w-8 h-8 text-[#78A2D2]" fill="currentColor" />
+                  <div className="absolute -top-4 -right-4 bg-white rounded-2xl p-4 shadow-xl group-hover:scale-110 transition-transform">
+                    <Quote className="w-8 h-8 text-[#AF140B]" fill="currentColor" />
                   </div>
 
                   {/* Rating Stars */}
                   <div className="flex gap-1 mb-4">
-                    {[...Array(testimonial.rating)].map((_, i) => (
+                    {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className="w-5 h-5 text-[#FEFFAF] fill-[#FEFFAF]"
+                        className="w-5 h-5 text-[#D4AF37] fill-[#D4AF37]"
                       />
                     ))}
                   </div>
@@ -117,8 +117,8 @@ export function TestimonialsSection() {
                         alt={testimonial.name}
                         className="w-14 h-14 rounded-full object-cover border-4 border-white/30"
                       />
-                      <div className="absolute -bottom-1 -right-1 bg-[#FEFFAF] rounded-full p-1">
-                        <div className="w-3 h-3 bg-[#78A2D2] rounded-full"></div>
+                      <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1">
+                        <div className="w-3 h-3 bg-[#AF140B] rounded-full"></div>
                       </div>
                     </div>
                     <div>
@@ -136,8 +136,8 @@ export function TestimonialsSection() {
       </div>
 
       {/* Decorative elements */}
-      <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-[#FEFFAF] to-white rounded-full blur-3xl opacity-30 animate-pulse"></div>
-      <div className="absolute bottom-20 right-10 w-32 h-32 bg-gradient-to-r from-white to-[#FEFFAF] rounded-full blur-3xl opacity-30 animate-pulse delay-75"></div>
+      <div className="absolute top-20 left-10 w-20 h-20 bg-gradient-to-r from-white to-white/50 rounded-full blur-3xl opacity-30 animate-pulse"></div>
+      <div className="absolute bottom-20 right-10 w-32 h-32 bg-gradient-to-r from-white/50 to-white rounded-full blur-3xl opacity-30 animate-pulse delay-75"></div>
     </section>
   );
 }

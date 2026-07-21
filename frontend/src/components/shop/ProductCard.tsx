@@ -1,140 +1,158 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Star, ShoppingCart, Heart } from 'lucide-react';
-import { Product } from '../../types';
-import { useApp } from '../../context/AppContext';
-import { toast } from 'sonner@2.0.3';
+import { Link } from "react-router";
+import { Star, Eye, Heart } from "lucide-react";
+import { useApp } from "../../context/AppContext";
+import { toast } from "sonner";
+import api from "../../services/api";
 
 interface ProductCardProps {
-  product: Product;
+  product: any;
   featured?: boolean;
 }
 
 export default function ProductCard({ product, featured = false }: ProductCardProps) {
-  const { addToCart } = useApp();
-  const navigate = useNavigate();
-  
+  const { user, wishlistItems, setWishlistItems, addWishlistItemGlobal, removeWishlistItemGlobal } = useApp();
+
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
-  // Calculate discount percentage if there's a sale
-  const discountPercent = product.originalPrice 
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
-    : 0;
+  const discountPercent =
+    product.originalPrice
+      ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+      : 0;
 
-  // Determine badge
-  const getBadge = () => {
-    if (discountPercent > 0) {
-      return { text: `-${discountPercent}%`, color: 'bg-red-500' };
-    }
-    if (product.isNew) {
-      return { text: 'MỚI', color: 'bg-[#FEFFAF] text-[#2C2C2C]' };
-    }
-    if (product.isBestSeller) {
-      return { text: 'PHỔ BIẾN', color: 'bg-[#78A2D2]' };
-    }
-    return null;
-  };
-
-  const badge = getBadge();
-
-  // Generate rating stars
   const rating = product.rating || 4.5;
+  const reviewCount = product.reviewCount || 0;
+
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 !== 0;
+
+  const productId = typeof product.id === 'string' ? parseInt(product.id, 10) : product.id;
+  
+  // Find if item is in wishlist globally
+  const wishlistItem = wishlistItems.find(item => (item.productId || item.id) === productId);
+  const isLiked = !!wishlistItem;
 
   return (
     <Link
       to={`/product/${product.id}`}
-      className={`group block bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-[#78A2D2]/30 hover:border-[#78A2D2] ${
-        featured ? 'transform hover:scale-105' : 'hover:-translate-y-1'
-      }`}
+      className={`group block bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-[#AF140B]/40 ${featured ? "transform hover:scale-105" : "hover:-translate-y-1"
+        }`}
     >
-      <div className="relative overflow-hidden aspect-square bg-gray-50">
+      {/* IMAGE */}
+      <div className="relative overflow-hidden aspect-square bg-gradient-to-br from-[#FFE5E3] to-white">
         <img
-          src={product.image}
+          src={product.image || "https://via.placeholder.com/300"}
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         />
-        
-        {/* Badge */}
-        {badge && (
-          <span className={`absolute top-3 right-3 ${badge.color} text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg`}>
-            {badge.text}
+
+        {/* Discount badge */}
+        {discountPercent > 0 && (
+          <span className="absolute top-2 right-2 bg-[#D91810] text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow">
+            -{discountPercent}%
           </span>
         )}
 
-        {/* Wishlist Icon */}
         <button
-          onClick={(e) => {
+          onClick={async (e) => {
             e.preventDefault();
-            // Handle wishlist
+
+            try {
+              if (isLiked) {
+                // ── REMOVE from wishlist ──
+                if (user && localStorage.getItem('accessToken')) {
+                  const targetId = wishlistItem.wishlistItemId || wishlistItem.id;
+                  const response = await api.removeWishlist(targetId);
+                  const items = response.data?.items || response.items || response.data || [];
+                  if (Array.isArray(items)) setWishlistItems(items);
+                } else {
+                  removeWishlistItemGlobal(productId);
+                }
+                toast.success("Đã xóa khỏi yêu thích");
+              } else {
+                // ── ADD to wishlist ──
+                if (user && localStorage.getItem('accessToken')) {
+                  const response = await api.addWishlist(productId);
+                  const items = response.data?.items || response.items || response.data || [];
+                  if (Array.isArray(items)) setWishlistItems(items);
+                } else {
+                  addWishlistItemGlobal({ productId, name: product.name, image: product.image, price: product.price });
+                }
+                toast.success("❤️ Đã thêm vào yêu thích");
+              }
+            } catch (error: any) {
+              const errorMsg = error.message || "";
+              if (errorMsg.includes('400') || errorMsg.includes('already') || errorMsg.includes('đã có') || errorMsg.includes('already in')) {
+                // If it was somehow a duplicate error, maybe our local state is out of sync. 
+                toast.error("Sản phẩm đã có trong danh sách yêu thích");
+              } else {
+                toast.error("Có lỗi xảy ra, vui lòng thử lại!");
+              }
+            }
           }}
-          className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm p-2.5 rounded-full hover:bg-[#FEFFAF] hover:scale-110 transition-all shadow-md group/heart"
+          className={`absolute top-2 left-2 bg-white/90 backdrop-blur-sm p-1.5 rounded-full hover:bg-[#FFE5E3] hover:scale-110 transition-all shadow group`}
         >
-          <Heart className="size-5 text-[#78A2D2] group-hover/heart:fill-[#78A2D2]" />
+          <Heart 
+            className={`size-4 transition-colors ${isLiked ? "fill-[#AF140B] text-[#AF140B]" : "text-gray-400 group-hover:text-[#AF140B]"}`} 
+          />
         </button>
       </div>
 
-      {/* Content */}
-      <div className="p-4 bg-white">
-        {/* Category */}
-        <p className="text-xs text-[#78A2D2] font-semibold mb-1 uppercase tracking-wide">
+      {/* CONTENT */}
+      <div className="p-3 bg-white">
+
+        {/* CATEGORY */}
+        <p className="text-[10px] text-[#AF140B] font-semibold mb-1 uppercase tracking-wide">
           {product.category}
         </p>
 
-        {/* Name */}
-        <h3 className="font-bold text-[#2C2C2C] mb-2 line-clamp-2 min-h-[2.5rem] group-hover:text-[#78A2D2] transition-colors text-[15px]">
+        {/* NAME */}
+        <h3 className="font-semibold text-[#2C2C2C] mb-1.5 line-clamp-2 min-h-[2.2rem] group-hover:text-[#AF140B] transition-colors text-xs leading-tight">
           {product.name}
         </h3>
 
-        {/* Rating */}
-        <div className="flex items-center gap-2 mb-3">
+        {/* RATING */}
+        <div className="flex items-center gap-1 mb-1.5">
           <div className="flex items-center gap-0.5">
             {[...Array(fullStars)].map((_, i) => (
-              <Star key={i} className="size-4 fill-[#FEFFAF] text-[#FEFFAF] stroke-[#78A2D2]" />
+              <Star key={i} className="size-3 fill-[#D4AF37] text-[#D4AF37]" />
             ))}
+
             {hasHalfStar && (
-              <Star className="size-4 fill-[#FEFFAF] text-[#FEFFAF] stroke-[#78A2D2]" style={{ clipPath: 'inset(0 50% 0 0)' }} />
+              <Star
+                className="size-3 fill-[#D4AF37] text-[#D4AF37]"
+                style={{ clipPath: "inset(0 50% 0 0)" }}
+              />
             )}
-            {[...Array(5 - fullStars - (hasHalfStar ? 1 : 0))].map((_, i) => (
-              <Star key={`empty-${i}`} className="size-4 text-gray-300" />
-            ))}
           </div>
-          <span className="text-xs text-gray-500">({product.reviewCount || 0})</span>
+
+          <span className="text-[10px] text-gray-400">({reviewCount})</span>
         </div>
 
-        {/* Price */}
-        <div className="flex items-baseline gap-2 mb-3">
-          <span className="text-xl font-bold text-[#78A2D2]">
+        {/* PRICE */}
+        <div className="flex items-baseline gap-1.5 mb-2">
+          <span className="text-sm font-bold text-[#AF140B]">
             {formatPrice(product.price)}
           </span>
+
           {product.originalPrice && (
-            <span className="text-sm text-gray-400 line-through">
+            <span className="text-[10px] text-gray-400 line-through">
               {formatPrice(product.originalPrice)}
             </span>
           )}
         </div>
 
-        {/* Add to Cart Button */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            addToCart(product, 1);
-            toast.success('✅ Thêm vào giỏ hàng thành công!', {
-              description: `${product.name}`,
-              duration: 2000,
-            });
-          }}
-          className="w-full bg-[#FEFFAF] text-[#2C2C2C] hover:bg-[#F0F09F] py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md hover:shadow-lg border-2 border-[#78A2D2]"
+        {/* VIEW DETAILS */}
+        <div
+          className="w-full bg-[#AF140B] text-white hover:bg-[#8D0F08] py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300"
         >
-          <ShoppingCart className="size-5" />
-          Thêm vào giỏ
-        </button>
+          <Eye className="size-3.5" />
+          Xem chi tiết
+        </div>
       </div>
     </Link>
   );
