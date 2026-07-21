@@ -45,8 +45,10 @@ public class Order {
     @Column(precision = 12, scale = 2)
     private BigDecimal pointsDiscount = BigDecimal.ZERO;
 
-    /** Đánh dấu đã tích điểm cho đơn này (tránh tích 2 lần khi cập nhật trạng thái). */
+    /** Đánh dấu đã tích điểm cho đơn này (tránh tích 2 lần khi cập nhật trạng thái).
+     *  columnDefinition có DEFAULT để ddl-auto=update thêm được cột NOT NULL vào bảng orders đã có dữ liệu. */
     @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean pointsAwarded = false;
 
     @Enumerated(EnumType.STRING)

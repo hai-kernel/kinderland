@@ -3,6 +3,9 @@ package kinderland.product.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import kinderland.common.dto.BaseResponse;
+import kinderland.common.exception.AppException;
+import kinderland.common.exception.ErrorCode;
+import kinderland.common.security.GatewayAuthContext;
 import kinderland.product.model.dto.request.StoreRequest;
 import kinderland.product.model.dto.response.NearbyStoreResponse;
 import kinderland.product.model.dto.response.StoreResponse;
@@ -25,6 +28,16 @@ public class StoreController {
     @GetMapping
     public ResponseEntity<BaseResponse<List<StoreResponse>>> getAll(HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", storeService.getAll()));
+    }
+
+    /** Cửa hàng của quản lý đang đăng nhập (FE gọi khi manager login để lấy storeId). */
+    @GetMapping("/me")
+    public ResponseEntity<BaseResponse<StoreResponse>> getMyStore(HttpServletRequest req) {
+        String email = GatewayAuthContext.getCurrentEmail();
+        if (email == null) {
+            throw new AppException(ErrorCode.MISSING_TOKEN);
+        }
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", storeService.getMyStore(email)));
     }
 
     @GetMapping("/{id}")

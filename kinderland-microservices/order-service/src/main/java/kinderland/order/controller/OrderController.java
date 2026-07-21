@@ -40,10 +40,32 @@ public class OrderController {
                 .body(BaseResponse.ok(201, req.getRequestURI(), "Đặt hàng thành công", response));
     }
 
-    /** Đơn của tôi (FE gọi /my-orders). */
-    @GetMapping({"", "/my-orders"})
+    /** Đơn của tôi (FE customer gọi /my-orders). */
+    @GetMapping("/my-orders")
     public ResponseEntity<BaseResponse<List<OrderResponse>>> myOrders(HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", orderService.getMyOrders(currentEmail())));
+    }
+
+    /**
+     * Danh sách đơn: ADMIN/MANAGER -> TẤT CẢ đơn (trang quản trị FE gọi GET /orders?page&size),
+     * khách -> đơn của chính mình. (FE customer dùng /my-orders, base path thực tế cho admin.)
+     */
+    @GetMapping("")
+    public ResponseEntity<BaseResponse<List<OrderResponse>>> orders(HttpServletRequest req) {
+        String email = currentEmail();
+        boolean staff = "ROLE_ADMIN".equals(currentRole()) || "ROLE_MANAGER".equals(currentRole());
+        List<OrderResponse> result = staff ? orderService.getAllOrders() : orderService.getMyOrders(email);
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", result));
+    }
+
+    /** Đơn của 1 cửa hàng (manager) — FE ManagerOrderPage gọi GET /orders/store/{storeId}. Chỉ staff. */
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<BaseResponse<List<OrderResponse>>> ordersByStore(@PathVariable Long storeId, HttpServletRequest req) {
+        String role = currentRole();
+        if (!"ROLE_ADMIN".equals(role) && !"ROLE_MANAGER".equals(role)) {
+            throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
+        }
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", orderService.getOrdersByStore(storeId)));
     }
 
     @GetMapping("/{id}")

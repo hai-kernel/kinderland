@@ -23,7 +23,7 @@ public class InventoryController {
 
     /** Tồn kho của 1 store (storeId tuỳ chọn; bỏ trống = store của manager hiện tại). */
     @GetMapping
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
     public ResponseEntity<BaseResponse<List<InventoryItemResponse>>> getInventory(
             @RequestParam(value = "storeId", required = false) Long storeId, HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", inventoryService.getInventory(storeId)));
@@ -37,28 +37,28 @@ public class InventoryController {
     }
 
     @PostMapping("/import")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
     public ResponseEntity<BaseResponse<Void>> importStock(@Valid @RequestBody InventoryRequest request, HttpServletRequest req) {
         inventoryService.importStock(request);
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã nhập kho", null));
     }
 
     @PostMapping("/adjust")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
     public ResponseEntity<BaseResponse<Void>> adjustStock(@Valid @RequestBody InventoryRequest request, HttpServletRequest req) {
         inventoryService.adjustStock(request);
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã điều chỉnh kho", null));
     }
 
     @PostMapping("/dispose")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
     public ResponseEntity<BaseResponse<Void>> disposeStock(@Valid @RequestBody InventoryRequest request, HttpServletRequest req) {
         inventoryService.disposeStock(request);
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã huỷ hàng hỏng", null));
     }
 
     @PostMapping("/transfer")
-    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
     public ResponseEntity<BaseResponse<Void>> transferStock(@RequestParam Long fromStoreId, @RequestParam Long toStoreId,
                                                             @RequestParam Long skuId, @RequestParam Integer quantity,
                                                             HttpServletRequest req) {

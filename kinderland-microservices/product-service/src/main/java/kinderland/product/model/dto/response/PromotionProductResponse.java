@@ -1,6 +1,5 @@
 package kinderland.product.model.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Data;
 
@@ -9,10 +8,10 @@ import java.math.BigDecimal;
 /**
  * Sản phẩm nằm trong 1 promotion — khớp FE promotionApi.PromotionProduct
  * (id, name, description, minPrice, imageUrl, categoryName, brandName, promotion:string).
+ * KHÔNG dùng @JsonInclude(NON_NULL) để imageUrl luôn có mặt (FE typed string).
  */
 @Data
 @Builder
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public class PromotionProductResponse {
     private Long id;
     private String name;

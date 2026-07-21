@@ -27,19 +27,28 @@ public class S3Config {
 
     @Bean
     public S3Client s3Client() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
         return S3Client.builder()
                 .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                .credentialsProvider(StaticCredentialsProvider.create(resolveCredentials()))
                 .build();
     }
 
     @Bean
     public S3Presigner s3Presigner() {
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
         return S3Presigner.builder()
                 .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
+                .credentialsProvider(StaticCredentialsProvider.create(resolveCredentials()))
                 .build();
+    }
+
+    /**
+     * Cho phép service KHỞI ĐỘNG khi chưa cấu hình AWS (dev/test): dùng credential giả nếu access-key trống.
+     * SDK chỉ ném lỗi khi THỰC SỰ gọi S3 (upload/xoá), không chặn startup như trước ("Access key ID cannot be blank").
+     */
+    private AwsBasicCredentials resolveCredentials() {
+        if (accessKey == null || accessKey.isBlank()) {
+            return AwsBasicCredentials.create("dummy", "dummy");
+        }
+        return AwsBasicCredentials.create(accessKey, secretKey);
     }
 }

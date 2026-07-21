@@ -26,6 +26,32 @@ public class ProductController {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.getAll()));
     }
 
+    /** Duyệt sản phẩm có lọc (public) — khớp FE productApi.browse. */
+    @GetMapping("/browse")
+    public ResponseEntity<BaseResponse<List<ProductResponse>>> browse(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long brandId,
+            @RequestParam(required = false) java.math.BigDecimal minPrice,
+            @RequestParam(required = false) java.math.BigDecimal maxPrice,
+            HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK",
+                productService.browse(keyword, categoryId, brandId, minPrice, maxPrice)));
+    }
+
+    /** Tìm sản phẩm theo từ khoá (public) — khớp FE productApi.search. */
+    @GetMapping("/search")
+    public ResponseEntity<BaseResponse<List<ProductResponse>>> search(
+            @RequestParam(required = false) String keyword, HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.search(keyword)));
+    }
+
+    /** Chi tiết sản phẩm (public) — khớp FE productApi.getDetail (đọc brandOrigin, promotion...). */
+    @GetMapping("/view-detail/{id}")
+    public ResponseEntity<BaseResponse<ProductResponse>> viewDetail(@PathVariable Long id, HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.getById(id)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<BaseResponse<ProductResponse>> getById(@PathVariable Long id, HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.getById(id)));

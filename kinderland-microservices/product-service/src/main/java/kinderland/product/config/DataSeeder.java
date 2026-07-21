@@ -1,9 +1,15 @@
 package kinderland.product.config;
 
 import kinderland.product.model.entity.Category;
+import kinderland.product.model.entity.Inventory;
 import kinderland.product.model.entity.Product;
+import kinderland.product.model.entity.Sku;
+import kinderland.product.model.entity.Store;
 import kinderland.product.repository.CategoryRepository;
+import kinderland.product.repository.InventoryRepository;
 import kinderland.product.repository.ProductRepository;
+import kinderland.product.repository.SkuRepository;
+import kinderland.product.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
@@ -30,6 +36,9 @@ public class DataSeeder implements ApplicationRunner {
 
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final SkuRepository skuRepository;
+    private final StoreRepository storeRepository;
+    private final InventoryRepository inventoryRepository;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -53,7 +62,7 @@ public class DataSeeder implements ApplicationRunner {
         Category workbooks  = save(category("Sách bài tập", books.getId()));
 
         // ── Products ─────────────────────────────────────────────────────────
-        productRepository.saveAll(List.of(
+        List<Product> products = productRepository.saveAll(List.of(
 
             // Toys — blocks
             Product.builder()
@@ -183,7 +192,40 @@ public class DataSeeder implements ApplicationRunner {
                 .build()
         ));
 
-        log.info("[DataSeeder] Seeded {} categories and 11 products successfully.", categoryRepository.count());
+        // ── Store demo ────────────────────────────────────────────────────────
+        // managerEmail = manager@kinderland.vn (seed ở auth-service) để test trang /manager (kho/chuyển kho/đơn/hoàn trả).
+        Store store = storeRepository.save(Store.builder()
+                .name("Kinderland Quận 1")
+                .code("KL-Q1")
+                .address("123 Nguyễn Huệ, Quận 1, TP.HCM")
+                .phone("02873008800")
+                .managerName("Store Manager")
+                .managerEmail("manager@kinderland.vn")
+                .latitude(10.7769)
+                .longitude(106.7009)
+                .active(true)
+                .build());
+
+        // ── SKU + Inventory cho từng product (để mua được từ shop) ────────────
+        // Mỗi product 1 SKU mặc định (giá = price của product); tồn kho tại store demo = stockQuantity cũ.
+        int i = 1;
+        for (Product p : products) {
+            Sku sku = skuRepository.save(Sku.builder()
+                    .product(p)
+                    .skuCode(String.format("SKU%03d", i++))
+                    .size("Standard")
+                    .type("default")
+                    .price(p.getPrice())
+                    .build());
+            inventoryRepository.save(Inventory.builder()
+                    .sku(sku)
+                    .store(store)
+                    .quantity(p.getStockQuantity() != null ? p.getStockQuantity() : 0)
+                    .build());
+        }
+
+        log.info("[DataSeeder] Seeded {} categories, {} products, 1 store, {} SKUs + inventory successfully.",
+                categoryRepository.count(), products.size(), products.size());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

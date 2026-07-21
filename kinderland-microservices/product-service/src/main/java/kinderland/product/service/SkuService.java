@@ -83,6 +83,8 @@ public class SkuService {
         return SkuInternalResponse.builder()
                 .skuId(sku.getId())
                 .skuCode(sku.getSkuCode())
+                .size(sku.getSize())
+                .color(sku.getColor())
                 .price(sku.getPrice())
                 .productId(sku.getProduct().getId())
                 .productName(sku.getProduct().getName())

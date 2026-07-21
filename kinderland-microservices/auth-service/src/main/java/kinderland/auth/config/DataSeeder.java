@@ -29,8 +29,30 @@ public class DataSeeder implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
         seedAdmin();
+        seedManager();
         seedSampleCustomer();
         log.info("[DataSeeder] Auth-service seeding complete.");
+    }
+
+    private void seedManager() {
+        String email = "manager@kinderland.vn";
+        if (accountRepository.existsByEmail(email)) {
+            return;
+        }
+        // Quản lý cửa hàng demo (product-service seed store với managerEmail = email này) để test trang /manager.
+        Account manager = Account.builder()
+                .username("manager")
+                .email(email)
+                .firstName("Store")
+                .lastName("Manager")
+                .password(passwordEncoder.encode("Manager@123"))
+                .role(Account.Role.MANAGER)
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        accountRepository.save(manager);
+        log.info("[DataSeeder] Created manager account: {}", email);
     }
 
     // -------------------------------------------------------------------------

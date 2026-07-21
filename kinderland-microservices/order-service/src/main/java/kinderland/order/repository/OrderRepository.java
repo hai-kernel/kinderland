@@ -13,6 +13,12 @@ import java.util.List;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByAccountEmailOrderByCreatedAtDesc(String accountEmail);
 
+    /** Tất cả đơn, mới nhất trước (ADMIN/MANAGER xem trang quản trị). */
+    List<Order> findAllByOrderByCreatedAtDesc();
+
+    /** Đơn theo cửa hàng, mới nhất trước (manager xem đơn của store mình). */
+    List<Order> findByStoreIdOrderByCreatedAtDesc(Long storeId);
+
     /** Đơn ở trạng thái cho trước và được tạo TRƯỚC mốc thời gian (dùng để tìm đơn PENDING quá hạn). */
     List<Order> findByStatusAndCreatedAtBefore(OrderStatus status, LocalDateTime cutoff);
 

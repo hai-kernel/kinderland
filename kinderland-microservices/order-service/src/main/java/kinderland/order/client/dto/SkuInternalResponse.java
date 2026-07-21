@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 public class SkuInternalResponse {
     private Long skuId;
     private String skuCode;
+    private String size;
+    private String color;
     private BigDecimal price;
     private Long productId;
     private String productName;

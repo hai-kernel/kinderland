@@ -22,6 +22,7 @@ public interface ProductMapper {
     @Mapping(target = "categoryName", source = "category.name")
     @Mapping(target = "brandId", source = "brand.id")
     @Mapping(target = "brandName", source = "brand.name")
+    @Mapping(target = "brandOrigin", source = "brand.origin")
     @Mapping(target = "minPrice", source = "price")
     @Mapping(target = "imageUrl", ignore = true)
     ProductResponse toResponse(Product product);

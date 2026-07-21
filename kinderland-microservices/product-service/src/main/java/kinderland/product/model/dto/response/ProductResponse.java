@@ -22,6 +22,8 @@ public class ProductResponse {
     private String categoryName;
     private Long brandId;
     private String brandName;
+    /** Xuất xứ thương hiệu (FE ProductDetail đọc brandOrigin). */
+    private String brandOrigin;
     /** Presigned URL ảnh bìa (resolve từ S3 key). */
     private String imageUrl;
     /** Promotion đang áp (FE đọc promotion.discountPercent); null nếu không có. */

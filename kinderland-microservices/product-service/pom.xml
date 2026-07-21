@@ -56,6 +56,12 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
+        <!-- Synchronous inter-service call (Product -> Order internal API: kiểm tra khách đã mua SKU cho Review) -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+
         <!-- Actuator: endpoint /actuator/health cho giám sát (yml đã khai báo expose health,info) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

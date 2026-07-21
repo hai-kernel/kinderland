@@ -77,7 +77,22 @@ public class PaymentService {
                     .build();
         }
 
-        // VNPAY: giữ PENDING, trả URL để client redirect sang cổng thanh toán.
+        // VNPAY nhưng CHƯA cấu hình cổng (dev/demo: secret-key trống) → mô phỏng thành công ngay,
+        // tránh crash HMAC "Empty key" + để luồng "card" trên FE chạy trọn vẹn (redirect về trang kết quả).
+        if (vnpSecretKey == null || vnpSecretKey.isBlank()) {
+            log.warn("VNPay chưa cấu hình (vnpay.secret-key trống) → MÔ PHỎNG thanh toán SUCCESS cho orderId={}. "
+                    + "Cấu hình VNPAY_TMN_CODE/VNPAY_SECRET_KEY để dùng cổng thật.", payment.getOrderId());
+            markSuccess(payment, "SIMULATED");
+            return PaymentInitResponse.builder()
+                    .orderId(payment.getOrderId())
+                    .method(payment.getMethod().name())
+                    .status(payment.getStatus().name())   // SUCCESS
+                    // Cùng trang kết quả với luồng VNPay thật (handleVnpayReturn) để FE hiển thị nhất quán.
+                    .paymentUrl(frontendUrl + "/payment-result?status=success")
+                    .build();
+        }
+
+        // VNPAY (đã cấu hình): giữ PENDING, trả URL để client redirect sang cổng thanh toán.
         paymentRepository.save(payment);
         String txnRef = payment.getOrderId() + "_" + System.currentTimeMillis();
         String ip = (req.getIpAddress() == null || req.getIpAddress().isBlank()) ? "127.0.0.1" : req.getIpAddress();

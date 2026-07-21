@@ -116,11 +116,17 @@ public class CartService {
         try {
             SkuInternalResponse sku = productClient.getSku(item.getSkuId(), item.getStoreId());
             BigDecimal price = sku.getPrice() == null ? BigDecimal.ZERO : sku.getPrice();
+            BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(item.getQuantity()));
             b.skuCode(sku.getSkuCode())
                     .productName(sku.getProductName())
                     .imageUrl(sku.getImageUrl())
                     .price(price)
-                    .lineTotal(price.multiply(BigDecimal.valueOf(item.getQuantity())));
+                    .lineTotal(lineTotal)
+                    // alias cho FE
+                    .unitPrice(price)
+                    .finalPrice(price)
+                    .totalPrice(lineTotal)
+                    .discountAmount(BigDecimal.ZERO);
         } catch (FeignException e) {
             log.warn("Không lấy được thông tin SKU {} khi hiển thị giỏ: {}", item.getSkuId(), e.getMessage());
         }

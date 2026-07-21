@@ -32,7 +32,10 @@ public class OrderItem {
     @Column(nullable = false)
     private Long skuId;
 
+    private Long productId;
     private String skuCode;
+    private String size;
+    private String color;
     private String productName;
     private String imageUrl;
 

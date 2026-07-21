@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "kinderland-all-services-v1",
-    "name": "Kinderland — All Services",
+    "name": "Kinderland ï¿½ All Services",
     "description": "Combined collection: Auth Service + Product Service + Notification Service.\n\nSetup:\n1. Run Login (Admin) or Login (Customer) first.\n2. accessToken and refreshToken are auto-saved.\n3. All protected endpoints use {{accessToken}} automatically.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -25,7 +25,7 @@
           "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"username\": \"testuser01\",\n  \"email\": \"testuser01@example.com\",\n  \"password\": \"Test@1234\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"phone\": \"0901234567\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/register","host":["{{baseUrl}}"],"path":["api","v1","auth","register"]}}
         },
         {
-          "name": "Login — Wrong Password (expect 401)",
+          "name": "Login ï¿½ Wrong Password (expect 401)",
           "event": [{"listen":"test","script":{"exec":["pm.test('Status 401',()=>pm.response.to.have.status(401));"],"type":"text/javascript"}}],
           "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"email\": \"admin@kinderland.vn\",\n  \"password\": \"wrongpassword\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/login","host":["{{baseUrl}}"],"path":["api","v1","auth","login"]}}
         },
@@ -60,7 +60,7 @@
           "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/account/me","host":["{{baseUrl}}"],"path":["api","v1","account","me"]}}
         },
         {
-          "name": "Get My Profile — No Token (expect 401)",
+          "name": "Get My Profile ï¿½ No Token (expect 401)",
           "event": [{"listen":"test","script":{"exec":["pm.test('Status 401',()=>pm.response.to.have.status(401));"],"type":"text/javascript"}}],
           "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/account/me","host":["{{baseUrl}}"],"path":["api","v1","account","me"]}}
         },
@@ -102,7 +102,7 @@
       ]
     },
     {
-      "name": "??? Admin — Accounts",
+      "name": "??? Admin ï¿½ Accounts",
       "item": [
         {
           "name": "Get All Accounts (Admin)",
@@ -170,7 +170,7 @@
           "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/products/{{productId}}","host":["{{baseUrl}}"],"path":["api","v1","products","{{productId}}"]}}
         },
         {
-          "name": "Get Product By ID — Not Found (expect 404)",
+          "name": "Get Product By ID ï¿½ Not Found (expect 404)",
           "event": [{"listen":"test","script":{"exec":["pm.test('Status 404',()=>pm.response.to.have.status(404));"],"type":"text/javascript"}}],
           "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/products/99999","host":["{{baseUrl}}"],"path":["api","v1","products","99999"]}}
         },
@@ -180,12 +180,12 @@
           "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Bo xep hinh 100 manh\",\n  \"description\": \"Bo xep hinh phat trien tri tue cho tre 3-8 tuoi\",\n  \"ageRange\": \"3-8\",\n  \"gender\": \"UNISEX\",\n  \"price\": 150000,\n  \"stockQuantity\": 50,\n  \"categoryId\": {{categoryId}}\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
         },
         {
-          "name": "Create Product — Missing Name (expect 400)",
+          "name": "Create Product ï¿½ Missing Name (expect 400)",
           "event": [{"listen":"test","script":{"exec":["pm.test('Status 400',()=>pm.response.to.have.status(400));"],"type":"text/javascript"}}],
           "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"\",\n  \"price\": 150000,\n  \"stockQuantity\": 50\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
         },
         {
-          "name": "Create Product — No Token (expect 401)",
+          "name": "Create Product ï¿½ No Token (expect 401)",
           "event": [{"listen":"test","script":{"exec":["pm.test('Status 401',()=>pm.response.to.have.status(401));"],"type":"text/javascript"}}],
           "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"name\": \"Test\",\n  \"price\": 100000,\n  \"stockQuantity\": 10\n}"},"url":{"raw":"{{baseUrl}}/api/v1/products","host":["{{baseUrl}}"],"path":["api","v1","products"]}}
         },
@@ -202,7 +202,7 @@
       ]
     },
     {
-      "name": "?? Notification Service — Health",
+      "name": "?? Notification Service ï¿½ Health",
       "item": [
         {
           "name": "Health Check (notification-service direct)",
@@ -221,8 +221,166 @@
         },
         {
           "name": "Trigger Welcome Email (Register + Check Kafka Flow)",
-          "event": [{"listen":"test","script":{"exec":["pm.test('Status 201 — event published to Kafka',()=>pm.response.to.have.status(201));pm.test('Check notification-service log for welcome email',()=>pm.expect(true).to.be.true);"],"type":"text/javascript"}}],
+          "event": [{"listen":"test","script":{"exec":["pm.test('Status 201 ï¿½ event published to Kafka',()=>pm.response.to.have.status(201));pm.test('Check notification-service log for welcome email',()=>pm.expect(true).to.be.true);"],"type":"text/javascript"}}],
           "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"username\": \"kafkatest01\",\n  \"email\": \"your-test-email@gmail.com\",\n  \"password\": \"Test@1234\",\n  \"firstName\": \"Kafka\",\n  \"lastName\": \"Test\",\n  \"phone\": \"0911000111\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/auth/register","host":["{{baseUrl}}"],"path":["api","v1","auth","register"]}}
+        }
+      ]
+    },
+    {
+      "name": "Promotion (Product Service)",
+      "item": [
+        {
+          "name": "Get Promotions (public)",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/promotions?keyword=&page=0&size=20","host":["{{baseUrl}}"],"path":["api","v1","promotions"],"query":[{"key":"keyword","value":""},{"key":"page","value":"0"},{"key":"size","value":"20"}]}}
+        },
+        {
+          "name": "Get Promotion By ID (public)",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/promotions/{{promotionId}}","host":["{{baseUrl}}"],"path":["api","v1","promotions","{{promotionId}}"]}}
+        },
+        {
+          "name": "Create Promotion (Admin)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.promotionId){pm.collectionVariables.set('promotionId',j.data.promotionId);}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"title\": \"Summer Sale\",\n  \"description\": \"10% off\",\n  \"code\": \"SUMMER10\",\n  \"discountPercent\": 10,\n  \"startDate\": \"2026-06-01T00:00:00\",\n  \"endDate\": \"2026-09-01T00:00:00\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/promotions","host":["{{baseUrl}}"],"path":["api","v1","promotions"]}}
+        },
+        {
+          "name": "Update Promotion (Admin)",
+          "request": {"method":"PUT","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"title\": \"Summer Sale Updated\",\n  \"description\": \"15% off\",\n  \"code\": \"SUMMER15\",\n  \"discountPercent\": 15,\n  \"startDate\": \"2026-06-01T00:00:00\",\n  \"endDate\": \"2026-09-01T00:00:00\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/promotions/{{promotionId}}","host":["{{baseUrl}}"],"path":["api","v1","promotions","{{promotionId}}"]}}
+        },
+        {
+          "name": "Assign Products (Admin)",
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"productIds\": [{{productId}}]\n}"},"url":{"raw":"{{baseUrl}}/api/v1/promotions/{{promotionId}}/assign-products","host":["{{baseUrl}}"],"path":["api","v1","promotions","{{promotionId}}","assign-products"]}}
+        },
+        {
+          "name": "Delete Promotion (Admin)",
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/promotions/{{promotionId}}","host":["{{baseUrl}}"],"path":["api","v1","promotions","{{promotionId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "Loyalty (Order Service)",
+      "item": [
+        {
+          "name": "Get My Points",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/loyalty/my-points","host":["{{baseUrl}}"],"path":["api","v1","loyalty","my-points"]}}
+        }
+      ]
+    },
+    {
+      "name": "Financial (Order Service)",
+      "item": [
+        {
+          "name": "Get Overview (Staff)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/financial/overview","host":["{{baseUrl}}"],"path":["api","v1","financial","overview"]}}
+        },
+        {
+          "name": "Get Revenue By Range (Staff)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/financial/revenue?start=2026-01-01&end=2026-12-31","host":["{{baseUrl}}"],"path":["api","v1","financial","revenue"],"query":[{"key":"start","value":"2026-01-01"},{"key":"end","value":"2026-12-31"}]}}
+        }
+      ]
+    },
+    {
+      "name": "Review (Product Service)",
+      "item": [
+        {
+          "name": "Get Reviews By Sku (public)",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/reviews/sku/{{skuId}}","host":["{{baseUrl}}"],"path":["api","v1","reviews","sku","{{skuId}}"]}}
+        },
+        {
+          "name": "Get Reviews By Product (public)",
+          "request": {"method":"GET","header":[],"url":{"raw":"{{baseUrl}}/api/v1/reviews/product/{{productId}}","host":["{{baseUrl}}"],"path":["api","v1","reviews","product","{{productId}}"]}}
+        },
+        {
+          "name": "Add Review (Customer, must have purchased)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.id){pm.collectionVariables.set('reviewId',j.data.id);}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/reviews/sku/{{skuId}}?rating=5&comment=Great product","host":["{{baseUrl}}"],"path":["api","v1","reviews","sku","{{skuId}}"],"query":[{"key":"rating","value":"5"},{"key":"comment","value":"Great product"}]}}
+        },
+        {
+          "name": "Edit Review (Customer owner)",
+          "request": {"method":"PUT","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/reviews/{{reviewId}}?rating=4&comment=Updated","host":["{{baseUrl}}"],"path":["api","v1","reviews","{{reviewId}}"],"query":[{"key":"rating","value":"4"},{"key":"comment","value":"Updated"}]}}
+        },
+        {
+          "name": "Get All Reviews (Staff)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/reviews","host":["{{baseUrl}}"],"path":["api","v1","reviews"]}}
+        },
+        {
+          "name": "Reply To Review (Staff)",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/reviews/{{reviewId}}/reply?reply=Thank you","host":["{{baseUrl}}"],"path":["api","v1","reviews","{{reviewId}}","reply"],"query":[{"key":"reply","value":"Thank you"}]}}
+        },
+        {
+          "name": "Delete Review (Staff)",
+          "request": {"method":"DELETE","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/reviews/{{reviewId}}","host":["{{baseUrl}}"],"path":["api","v1","reviews","{{reviewId}}"]}}
+        }
+      ]
+    },
+    {
+      "name": "Return Requests (Order Service)",
+      "item": [
+        {
+          "name": "Create Return (Customer)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.returnId){pm.collectionVariables.set('returnId',j.data.returnId);}pm.test('Status 201',()=>pm.response.to.have.status(201));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"orderItemId\": {{orderItemId}},\n  \"returnReason\": \"Defective\",\n  \"description\": \"Item arrived damaged\",\n  \"photoUrls\": [\"https://example.com/photo1.jpg\"],\n  \"bankAccountNumber\": \"123456789\",\n  \"bankName\": \"Vietcombank\",\n  \"bankAccountName\": \"NGUYEN VAN A\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/return-requests","host":["{{baseUrl}}"],"path":["api","v1","return-requests"]}}
+        },
+        {
+          "name": "Get My Returns (Customer)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/return-requests/my-requests?page=0&size=20","host":["{{baseUrl}}"],"path":["api","v1","return-requests","my-requests"],"query":[{"key":"page","value":"0"},{"key":"size","value":"20"}]}}
+        },
+        {
+          "name": "Get All Returns (Staff)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/return-requests?page=0&size=20","host":["{{baseUrl}}"],"path":["api","v1","return-requests"],"query":[{"key":"page","value":"0"},{"key":"size","value":"20"}]}}
+        },
+        {
+          "name": "Get Return By ID",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/return-requests/{{returnId}}","host":["{{baseUrl}}"],"path":["api","v1","return-requests","{{returnId}}"]}}
+        },
+        {
+          "name": "Approve Return (Staff)",
+          "request": {"method":"PATCH","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/return-requests/{{returnId}}/approve","host":["{{baseUrl}}"],"path":["api","v1","return-requests","{{returnId}}","approve"]}}
+        },
+        {
+          "name": "Receive Return (Staff)",
+          "request": {"method":"PATCH","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/return-requests/{{returnId}}/receive","host":["{{baseUrl}}"],"path":["api","v1","return-requests","{{returnId}}","receive"]}}
+        },
+        {
+          "name": "Refund Return (Staff)",
+          "request": {"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"refundType\": \"BANK_TRANSFER\",\n  \"bankTransactionCode\": \"TXN123456\"\n}"},"url":{"raw":"{{baseUrl}}/api/v1/return-requests/{{returnId}}/refund","host":["{{baseUrl}}"],"path":["api","v1","return-requests","{{returnId}}","refund"]}}
+        },
+        {
+          "name": "Get Shipping Label (HTML)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"},{"key":"Accept","value":"text/html"}],"url":{"raw":"{{baseUrl}}/api/v1/return-requests/{{returnId}}/label","host":["{{baseUrl}}"],"path":["api","v1","return-requests","{{returnId}}","label"]}}
+        }
+      ]
+    },
+    {
+      "name": "Stock Transfer (Product Service)",
+      "item": [
+        {
+          "name": "Get My Transfers (Staff)",
+          "request": {"method":"GET","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/transfer","host":["{{baseUrl}}"],"path":["api","v1","transfer"]}}
+        },
+        {
+          "name": "Create Draft (Staff)",
+          "event": [{"listen":"test","script":{"exec":["const j=pm.response.json();if(j.data&&j.data.id){pm.collectionVariables.set('transferId',j.data.id);}pm.test('Status 200',()=>pm.response.to.have.status(200));"],"type":"text/javascript"}}],
+          "request": {"method":"POST","header":[{"key":"Content-Type","value":"application/json"},{"key":"Authorization","value":"Bearer {{accessToken}}"}],"body":{"mode":"raw","raw":"{\n  \"toStoreId\": {{toStoreId}},\n  \"skuId\": {{skuId}},\n  \"quantity\": 5\n}"},"url":{"raw":"{{baseUrl}}/api/v1/transfer/draft","host":["{{baseUrl}}"],"path":["api","v1","transfer","draft"]}}
+        },
+        {
+          "name": "Submit (Staff, sender)",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/transfer/{{transferId}}/submit","host":["{{baseUrl}}"],"path":["api","v1","transfer","{{transferId}}","submit"]}}
+        },
+        {
+          "name": "Approve (Staff, receiver)",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/transfer/{{transferId}}/approve","host":["{{baseUrl}}"],"path":["api","v1","transfer","{{transferId}}","approve"]}}
+        },
+        {
+          "name": "Ship (Staff, sender)",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/transfer/{{transferId}}/ship","host":["{{baseUrl}}"],"path":["api","v1","transfer","{{transferId}}","ship"]}}
+        },
+        {
+          "name": "Receive (Staff, receiver)",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/transfer/{{transferId}}/receive","host":["{{baseUrl}}"],"path":["api","v1","transfer","{{transferId}}","receive"]}}
+        },
+        {
+          "name": "Complete (Staff, receiver)",
+          "request": {"method":"POST","header":[{"key":"Authorization","value":"Bearer {{accessToken}}"}],"url":{"raw":"{{baseUrl}}/api/v1/transfer/{{transferId}}/complete","host":["{{baseUrl}}"],"path":["api","v1","transfer","{{transferId}}","complete"]}}
         }
       ]
     }
@@ -237,6 +395,14 @@
     {"key":"addressId","value":"1","type":"string"},
     {"key":"accountId","value":"1","type":"string"},
     {"key":"categoryId","value":"1","type":"string"},
-    {"key":"productId","value":"1","type":"string"}
+    {"key":"productId","value":"1","type":"string"},
+    {"key":"orderUrl","value":"http://localhost:8083","type":"string"},
+    {"key":"promotionId","value":"1","type":"string"},
+    {"key":"skuId","value":"1","type":"string"},
+    {"key":"toStoreId","value":"2","type":"string"},
+    {"key":"transferId","value":"1","type":"string"},
+    {"key":"reviewId","value":"1","type":"string"},
+    {"key":"returnId","value":"1","type":"string"},
+    {"key":"orderItemId","value":"1","type":"string"}
   ]
 }

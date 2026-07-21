@@ -47,6 +47,12 @@ public class StoreService {
         return storeMapper.toResponse(findEntity(id));
     }
 
+    /** Cửa hàng mà user đang đăng nhập quản lý (theo managerEmail) — FE gọi GET /stores/me. */
+    public StoreResponse getMyStore(String managerEmail) {
+        return storeMapper.toResponse(storeRepository.findByManagerEmail(managerEmail)
+                .orElseThrow(() -> new AppException(ErrorCode.STORE_NOT_FOUND)));
+    }
+
     public List<StoreResponse> getAll() {
         return storeMapper.toResponseList(storeRepository.findAll());
     }

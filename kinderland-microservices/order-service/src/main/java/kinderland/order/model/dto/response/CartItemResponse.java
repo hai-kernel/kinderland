@@ -17,4 +17,10 @@ public class CartItemResponse {
     private BigDecimal price;
     private Integer quantity;
     private BigDecimal lineTotal;
+    // Alias khớp FE Cart.tsx (đọc unitPrice/finalPrice/totalPrice/discountAmount). Hiện chưa áp
+    // promotion vào giỏ (apply-to-order deferred) nên finalPrice = unitPrice, discountAmount = 0.
+    private BigDecimal unitPrice;
+    private BigDecimal finalPrice;
+    private BigDecimal totalPrice;
+    private BigDecimal discountAmount;
 }

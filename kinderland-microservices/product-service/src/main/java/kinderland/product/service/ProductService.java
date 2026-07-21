@@ -77,6 +77,20 @@ public class ProductService {
         return productRepository.findAll().stream().map(this::toResponse).toList();
     }
 
+    /** Duyệt sản phẩm có lọc (khớp FE productApi.browse). */
+    public List<ProductResponse> browse(String keyword, Long categoryId, Long brandId,
+                                        BigDecimal minPrice, BigDecimal maxPrice) {
+        return productRepository.browse(
+                        keyword == null || keyword.isBlank() ? null : keyword,
+                        categoryId, brandId, minPrice, maxPrice)
+                .stream().map(this::toResponse).toList();
+    }
+
+    /** Tìm sản phẩm theo từ khoá (khớp FE productApi.search). */
+    public List<ProductResponse> search(String keyword) {
+        return browse(keyword, null, null, null, null);
+    }
+
     /** Map entity -> response + đính presigned URL của ảnh bìa (ảnh đầu tiên của product). */
     private ProductResponse toResponse(Product product) {
         ProductResponse response = productMapper.toResponse(product);

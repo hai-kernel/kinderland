@@ -43,7 +43,7 @@ vnpay:
   secret-key: ${VNPAY_SECRET_KEY:}
   url: ${VNPAY_URL:https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
   return-url: ${VNPAY_RETURN_URL:http://localhost:8080/api/v1/payment/vnpay-return}
-  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 springdoc:
   swagger-ui:

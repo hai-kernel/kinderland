@@ -83,8 +83,11 @@ public class OrderService {
             items.add(OrderItem.builder()
                     .order(order)
                     .skuId(sku.getSkuId())
+                    .productId(sku.getProductId())         // denormalize snapshot
                     .skuCode(sku.getSkuCode())
-                    .productName(sku.getProductName())     // denormalize snapshot
+                    .size(sku.getSize())
+                    .color(sku.getColor())
+                    .productName(sku.getProductName())
                     .imageUrl(sku.getImageUrl())
                     .unitPrice(unitPrice)
                     .quantity(line.getQuantity())
@@ -102,6 +105,18 @@ public class OrderService {
 
     public List<OrderResponse> getMyOrders(String accountEmail) {
         return orderRepository.findByAccountEmailOrderByCreatedAtDesc(accountEmail).stream()
+                .map(orderMapper::toResponse).toList();
+    }
+
+    /** ADMIN/MANAGER: tất cả đơn (mới nhất trước) cho trang quản trị đơn hàng của FE. */
+    public List<OrderResponse> getAllOrders() {
+        return orderRepository.findAllByOrderByCreatedAtDesc().stream()
+                .map(orderMapper::toResponse).toList();
+    }
+
+    /** Đơn của 1 cửa hàng (manager xem đơn store mình) — FE gọi GET /orders/store/{storeId}. */
+    public List<OrderResponse> getOrdersByStore(Long storeId) {
+        return orderRepository.findByStoreIdOrderByCreatedAtDesc(storeId).stream()
                 .map(orderMapper::toResponse).toList();
     }
 
