@@ -1,6 +1,6 @@
 package kinderland.product.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -14,21 +14,19 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
  * Credentials & region lấy từ prefix aws.* trong application.yml (nạp từ biến môi trường AWS_*).
  */
 @Configuration
+@EnableConfigurationProperties(AwsProperties.class)
 public class S3Config {
 
-    @Value("${aws.access-key}")
-    private String accessKey;
+    private final AwsProperties awsProperties;
 
-    @Value("${aws.secret-key}")
-    private String secretKey;
-
-    @Value("${aws.region}")
-    private String region;
+    public S3Config(AwsProperties awsProperties) {
+        this.awsProperties = awsProperties;
+    }
 
     @Bean
     public S3Client s3Client() {
         return S3Client.builder()
-                .region(Region.of(region))
+                .region(Region.of(awsProperties.getRegion()))
                 .credentialsProvider(StaticCredentialsProvider.create(resolveCredentials()))
                 .build();
     }
@@ -36,19 +34,20 @@ public class S3Config {
     @Bean
     public S3Presigner s3Presigner() {
         return S3Presigner.builder()
-                .region(Region.of(region))
+                .region(Region.of(awsProperties.getRegion()))
                 .credentialsProvider(StaticCredentialsProvider.create(resolveCredentials()))
                 .build();
     }
 
     /**
-     * Cho phép service KHỞI ĐỘNG khi chưa cấu hình AWS (dev/test): dùng credential giả nếu access-key trống.
-     * SDK chỉ ném lỗi khi THỰC SỰ gọi S3 (upload/xoá), không chặn startup như trước ("Access key ID cannot be blank").
+     * Bucket/region đã được @Validated bảo đảm không rỗng lúc startup.
+     * Credentials vẫn cho phép rỗng: môi trường thật có thể dùng IAM role thay vì static key.
      */
     private AwsBasicCredentials resolveCredentials() {
+        String accessKey = awsProperties.getAccessKey();
         if (accessKey == null || accessKey.isBlank()) {
             return AwsBasicCredentials.create("dummy", "dummy");
         }
-        return AwsBasicCredentials.create(accessKey, secretKey);
+        return AwsBasicCredentials.create(accessKey, awsProperties.getSecretKey());
     }
 }

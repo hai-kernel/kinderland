@@ -2,7 +2,7 @@ package kinderland.product.service.impl;
 
 import kinderland.product.service.S3Service;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+import kinderland.product.config.AwsProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -31,11 +31,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class S3ServiceImpl implements S3Service {
 
-    @Value("${aws.s3.bucket}")
-    private String bucketName;
-
+    private final AwsProperties awsProperties;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
+
+    /** Bucket đã được @Validated bảo đảm không rỗng lúc startup (xem AwsProperties). */
+    private String bucketName() {
+        return awsProperties.getS3().getBucket();
+    }
 
     private record CachedUrl(String url, Instant expiresAt) {}
     private final Map<String, CachedUrl> urlCache = new ConcurrentHashMap<>();
@@ -45,7 +48,7 @@ public class S3ServiceImpl implements S3Service {
     public String upload(MultipartFile file) throws IOException {
         String key = "images/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
+                .bucket(bucketName())
                 .key(key)
                 .contentType(file.getContentType())
                 .build();
@@ -60,7 +63,7 @@ public class S3ServiceImpl implements S3Service {
             return cached.url();
         }
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
+                .bucket(bucketName())
                 .key(key)
                 .build();
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
@@ -76,7 +79,7 @@ public class S3ServiceImpl implements S3Service {
     @Override
     public void deleteFile(String key) {
         DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
-                .bucket(bucketName)
+                .bucket(bucketName())
                 .key(key)
                 .build();
         s3Client.deleteObject(deleteRequest);

@@ -1,5 +1,6 @@
 package kinderland.product.security;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +48,14 @@ public class SecurityConfig {
                 .cors(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // ERROR/FORWARD là dispatch NỘI BỘ của servlet container, không phải request
+                        // từ client. Spring Security xoá SecurityContext sau khi request gốc kết thúc,
+                        // nên khi controller ném exception -> forward sang /error -> không còn
+                        // authentication -> anyRequest().authenticated() trả 401 "missing token",
+                        // CHE MẤT lỗi thật (vd: lỗi S3, validation, NPE).
+                        // Cho phép các dispatch này để lỗi thật hiện ra đúng status code.
+                        // KHÔNG làm yếu bảo mật: client gọi thẳng /error vẫn là DispatcherType.REQUEST.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
                         // Internal Feign calls between services — no auth required
                         .requestMatchers("/internal/**").permitAll()
                         // Swagger / OpenAPI docs — always public

@@ -46,10 +46,45 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
 
+# ----- Seed dữ liệu mẫu -----
+# CHỈ chạy khi profile 'dev' đang bật (DataSeedCoordinator có @Profile("dev")).
+# Mọi seeder đều IDEMPOTENT: bỏ qua bản ghi đã tồn tại theo tên, không ghi đè dữ liệu có sẵn.
+app:
+  seed:
+    enabled: true
+
+    category:
+      enabled: true
+
+    brand:
+      enabled: true
+
+    product:
+      enabled: true
+
+    # TẮT: seed ảnh cần S3 hoạt động, hiện AWS credentials chưa hợp lệ
+    # (S3Exception 403 "Access Key Id does not exist"). Bật lại sau khi cấu hình xong AWS.
+    product-image:
+      enabled: false
+
+    # Các seeder khác đã có sẵn trong code, mặc định bật (matchIfMissing = true).
+    # Khai báo tường minh để dễ tắt khi cần.
+    blog:
+      enabled: true
+
+    promotion:
+      enabled: true
+
+    review:
+      enabled: true
+
 # ----- AWS S3 (lưu ảnh sản phẩm). Điền creds vào .env, KHÔNG commit. -----
 aws:
+  # Credentials CÓ THỂ rỗng: môi trường thật có thể dùng IAM role thay vì static key.
   access-key: ${AWS_ACCESS_KEY:}
   secret-key: ${AWS_SECRET_KEY:}
   region: ${AWS_REGION:ap-southeast-1}
   s3:
-    bucket: ${AWS_S3_BUCKET:}
+    # KHÔNG để default rỗng: bucket rỗng khiến AWS SDK ném "Bucket cannot be empty"
+    # mãi tới lúc user upload ảnh. AwsProperties (@Validated @NotBlank) chặn ngay lúc startup.
+    bucket: ${AWS_S3_BUCKET}
