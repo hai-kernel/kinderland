@@ -1,22 +1,22 @@
 # =====================================================================================
-# CHáº Y TOÃ€N Bá»˜ há»‡ thá»‘ng trong Docker (háº¡ táº§ng + config-server + 6 service).
+# CHaº Y TOA€N Ba»˜ ha»‡ tha»‘ng trong Docker (haº¡ taº§ng + config-server + 6 service).
 #
-# BÆ°á»›c 1 (Báº®T BUá»˜C): build jar trÆ°á»›c
+# BÆ°a»›c 1 (Baº®T BUa»˜C): build jar trÆ°a»›c
 #     mvn -f pom.xml clean package -DskipTests
-# BÆ°á»›c 2:
+# BÆ°a»›c 2:
 #     docker compose -f docker-compose.yml up --build
 #
-# THá»¨ Tá»° KHá»žI Äá»˜NG Báº®T BUá»˜C:
-#     postgres/kafka/redis -> config-server -> eureka-server -> cÃ¡c service
-#     Má»i service Ä‘á»u cÃ³ `spring.config.import: configserver:...` KHÃ”NG optional,
-#     nÃªn config-server cháº¿t lÃ  service khÃ´ng khá»Ÿi Ä‘á»™ng Ä‘Æ°á»£c.
+# THa»¨ Ta»° KHa»zI Aa»˜NG Baº®T BUa»˜C:
+#     postgres/kafka/redis -> config-server -> eureka-server -> cA¡c service
+#     Ma»i service A‘a»u cA³ `spring.config.import: configserver:...` KHA”NG optional,
+#     nAªn config-server chaº¿t lA  service khA´ng kha»Yi A‘a»™ng A‘Æ°a»£c.
 #
-# LÆ¯U Ã config-server Ä‘á»c tá»« GIT (GitHub), KHÃ”NG Ä‘á»c thÆ° má»¥c local.
-#     Sá»­a config-repository á»Ÿ mÃ¡y pháº£i commit + push branch dev má»›i cÃ³ hiá»‡u lá»±c.
+# LÆ¯U A config-server A‘a»c ta»« GIT (GitHub), KHA”NG A‘a»c thÆ° ma»¥c local.
+#     Sa»a config-repository a»Y mA¡y phaº£i commit + push branch dev ma»›i cA³ hia»‡u la»±c.
 # =====================================================================================
 services:
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Háº  Táº¦NG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ Haº  Taº¦NG a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   postgres:
     image: postgres:16
     container_name: kinderland-postgres
@@ -44,14 +44,14 @@ services:
       retries: 10
 
   kafka:
-    # Pin version (khÃ´ng dÃ¹ng 'latest') Ä‘á»ƒ mÃ´i trÆ°á»ng tÃ¡i láº­p Ä‘Æ°á»£c.
+    # Pin version (khA´ng dA¹ng 'latest') A‘a»ƒ mA´i trÆ°a»ng tA¡i laºp A‘Æ°a»£c.
     image: apache/kafka:3.9.0
     container_name: kinderland-kafka
     environment:
       - KAFKA_NODE_ID=0
       - KAFKA_PROCESS_ROLES=controller,broker
       - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      # EXTERNAL cho client trÃªn HOST (localhost:9092); INTERNAL cho container (kafka:29092).
+      # EXTERNAL cho client trAªn HOST (localhost:9092); INTERNAL cho container (kafka:29092).
       - KAFKA_LISTENERS=EXTERNAL://:9092,INTERNAL://:29092,CONTROLLER://:9093
       - KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:9092,INTERNAL://kafka:29092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
@@ -70,9 +70,9 @@ services:
       timeout: 10s
       retries: 12
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIG SERVER (pháº£i cháº¡y TRÆ¯á»šC) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ CONFIG SERVER (phaº£i chaº¡y TRÆ¯a»sC) a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   config-server:
-    # Context = Maven reactor root (xem giải thích ở eureka-server).
+    # Context = Maven reactor root (xem giai thich o eureka-server).
     build:
       context: .
       dockerfile: config-server/Dockerfile
@@ -80,12 +80,12 @@ services:
     ports:
       - "8888:8888"
     environment:
-      # Git backend: clone tháº³ng tá»« GitHub. Repo public nÃªn KHÃ”NG cáº§n token.
+      # Git backend: clone thaº³ng ta»« GitHub. Repo public nAªn KHA”NG caº§n token.
       CONFIG_GIT_URI: ${CONFIG_GIT_URI:-https://github.com/hai-kernel/kinderland.git}
-      # config-repository lÃ  THÆ¯ Má»¤C CON trong monorepo -> báº¯t buá»™c cÃ³ search-paths,
-      # thiáº¿u nÃ³ Config Server tÃ¬m á»Ÿ root repo vÃ  tráº£ 0 property source.
+      # config-repository lA  THÆ¯ Ma»¤C CON trong monorepo -> baº¯t bua»™c cA³ search-paths,
+      # thiaº¿u nA³ Config Server tA¬m a»Y root repo vA  traº£ 0 property source.
       CONFIG_GIT_SEARCH_PATHS: ${CONFIG_GIT_SEARCH_PATHS:-kinderland-microservices/config-repository}
-      # config-repository CHá»ˆ tá»“n táº¡i trÃªn branch dev, branch main khÃ´ng cÃ³.
+      # config-repository CHa»ˆ ta»“n taº¡i trAªn branch dev, branch main khA´ng cA³.
       CONFIG_GIT_BRANCH: ${CONFIG_GIT_BRANCH:-dev}
       CONFIG_GIT_USERNAME: ${CONFIG_GIT_USERNAME:-}
       CONFIG_GIT_TOKEN: ${CONFIG_GIT_TOKEN:-}
@@ -100,11 +100,11 @@ services:
       retries: 20
       start_period: 30s
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DISCOVERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ DISCOVERY a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   eureka-server:
-    # Context PHẢI là Maven reactor root (thư mục chứa file compose này), KHÔNG phải
-    # ./eureka-server: Dockerfile đã chuyển sang multi-stage và cần parent pom cùng
-    # toàn bộ 9 module pom.xml (root pom khai báo 9 module nên Maven parse cả reactor).
+    # Context PHAI la Maven reactor root (thu muc chua file compose nay), KHONG phai
+    # ./eureka-server: Dockerfile da chuyen sang multi-stage va can parent pom cung
+    # toan bo 9 module pom.xml (root pom khai bao 9 module nen Maven parse ca reactor).
     build:
       context: .
       dockerfile: eureka-server/Dockerfile
@@ -118,7 +118,7 @@ services:
       config-server:
         condition: service_healthy
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GATEWAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ GATEWAY a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   api-gateway:
     build: ./api-gateway
     container_name: kinderland-gateway
@@ -138,7 +138,7 @@ services:
       redis:
         condition: service_healthy
 
-  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ SERVICES a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   auth-service:
     build: ./auth-service
     container_name: kinderland-auth
@@ -152,7 +152,7 @@ services:
       DB_PASSWORD: "123456"
       EUREKA_URL: http://eureka-server:8761/eureka/
       # KAFKA_BROKERS = business messaging (Spring Cloud Stream)
-      # KAFKA_BOOTSTRAP_SERVERS = Spring Cloud Bus. Cáº§n Cáº¢ HAI.
+      # KAFKA_BOOTSTRAP_SERVERS = Spring Cloud Bus. Caº§n Caº¢ HAI.
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET la bat buoc}
@@ -188,7 +188,7 @@ services:
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # AwsProperties @Validated @NotBlank -> THIáº¾U AWS_S3_BUCKET lÃ  service KHÃ”NG khá»Ÿi Ä‘á»™ng.
+      # AwsProperties @Validated @NotBlank -> THIaº¾U AWS_S3_BUCKET lA  service KHA”NG kha»Yi A‘a»™ng.
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:?AWS_S3_BUCKET la bat buoc (product-service fail-fast)}
       AWS_REGION: ${AWS_REGION:-ap-southeast-1}
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-}
@@ -227,7 +227,7 @@ services:
       kafka:
         condition: service_healthy
 
-  # PORT 8085 (Ä‘Ã£ Ä‘á»•i tá»« 8084) â€” khá»›p config-repository/notification-service.yml
+  # PORT 8085 (A‘A£ A‘a»•i ta»« 8084) a€” kha»›p config-repository/notification-service.yml
   notification-service:
     build: ./notification-service
     container_name: kinderland-notification
@@ -248,10 +248,10 @@ services:
       kafka:
         condition: service_healthy
 
-  # PORT 8084 â€” khá»›p `server.port` trong config-repository/payment-service.yml.
-  # Cáº¢NH BÃO: port nÃ y Ä‘Ã£ Ä‘á»•i 2 láº§n (8085 -> 8086 -> 8084). Comment á»Ÿ Ä‘áº§u file YAML Ä‘Ã³
-  # váº«n ghi 8086 vÃ  Ä‘ang SAI. Äá»•i port thÃ¬ pháº£i sá»­a cáº£ 3 nÆ¡i: config-repository,
-  # docker-compose.yml vÃ  comment mÃ´ táº£.
+  # PORT 8084 a€” kha»›p `server.port` trong config-repository/payment-service.yml.
+  # Caº¢NH BAO: port nA y A‘A£ A‘a»•i 2 laº§n (8085 -> 8086 -> 8084). Comment a»Y A‘aº§u file YAML A‘A³
+  # vaº«n ghi 8086 vA  A‘ang SAI. Aa»•i port thA¬ phaº£i sa»a caº£ 3 nÆ¡i: config-repository,
+  # docker-compose.yml vA  comment mA´ taº£.
   payment-service:
     build: ./payment-service
     container_name: kinderland-payment
@@ -266,8 +266,8 @@ services:
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # VnPayProperties @Validated @NotBlank -> THIáº¾U 2 biáº¿n nÃ y lÃ  service KHÃ”NG khá»Ÿi Ä‘á»™ng.
-      # ÄÃ¢y lÃ  CHá»¦ Ã: trÆ°á»›c Ä‘Ã¢y secret rá»—ng thÃ¬ há»‡ thá»‘ng tá»± Ä‘Ã¡nh SUCCESS má»i giao dá»‹ch.
+      # VnPayProperties @Validated @NotBlank -> THIaº¾U 2 biaº¿n nA y lA  service KHA”NG kha»Yi A‘a»™ng.
+      # AA¢y lA  CHa»¦ A: trÆ°a»›c A‘A¢y secret ra»—ng thA¬ ha»‡ tha»‘ng ta»± A‘A¡nh SUCCESS ma»i giao da»‹ch.
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:?VNPAY_TMN_CODE la bat buoc (payment-service fail-fast)}
       VNPAY_SECRET_KEY: ${VNPAY_SECRET_KEY:?VNPAY_SECRET_KEY la bat buoc (payment-service fail-fast)}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
