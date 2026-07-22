@@ -54,6 +54,10 @@ public class AuthenticationGlobalFilter implements GlobalFilter, Ordered {
      * Danh sách path KHÔNG yêu cầu đăng nhập (công khai cho mọi HTTP method).
      */
     private static final List<String> PUBLIC_PATHS = List.of(
+            // Fallback NỘI BỘ của CircuitBreaker (forward:/fallback/**).
+            // Bắt buộc bypass: khi downstream chết, request forward sang đây mà vẫn bị
+            // filter đòi JWT thì client nhận 401 giả thay vì 503 -> che mất lỗi thật.
+            "/fallback/**",
             "/api/v1/auth/**",
             "/api/v1/welcome",
             "/v3/api-docs/**",

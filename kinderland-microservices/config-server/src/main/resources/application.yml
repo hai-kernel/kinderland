@@ -21,7 +21,7 @@ spring:
 
           # QUAN TRỌNG: config-repository CHỈ tồn tại trên branch 'dev'.
           # Branch 'main' có 0 file config -> để 'main' sẽ ra rỗng.
-          default-label: ${CONFIG_GIT_BRANCH:dev}
+          default-label: ${CONFIG_GIT_BRANCH:main}
 
           # Repo hiện PUBLIC -> không cần credentials (để rỗng = JGit bỏ qua auth).
           # Chỉ điền khi chuyển repo sang private, và CHỈ qua biến môi trường.

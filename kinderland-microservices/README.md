@@ -37,7 +37,7 @@ Yêu cầu: JDK 21, Docker (cho Postgres + Kafka). Maven KHÔNG bắt buộc —
 cd kinderland-microservices
 
 # Cấu hình biến môi trường: copy mẫu rồi điền giá trị thật
-cp .env.example .env
+cp .env .env
 
 # 0. Hạ tầng: Postgres (tự tạo 3 DB) + Kafka
 docker compose up -d
@@ -80,7 +80,7 @@ POST http://localhost:8080/api/v1/orders        body: {"items":[{"productId":1,"
 ## Chạy toàn bộ bằng Docker (tuỳ chọn)
 ```bash
 mvn -DskipTests clean package                       # build jar trước (bắt buộc)
-docker compose -f docker-compose.full.yml up --build # hạ tầng + 6 service, 1 lệnh
+docker compose -f docker-compose.yml up --build # hạ tầng + 6 service, 1 lệnh
 ```
 Mỗi service có `Dockerfile` (JRE 21, copy jar). `docker-compose.full.yml` override DB/Eureka/Kafka
 sang hostname container (`postgres`, `eureka-server`, `kafka:29092`). Có sẵn `JWT_SECRET` dev mặc định.

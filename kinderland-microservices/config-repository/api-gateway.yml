@@ -14,6 +14,12 @@ spring:
       # (prefix cũ 'spring.cloud.gateway.routes' đã bị deprecated/đổi tên).
       server:
         webflux:
+          # Timeout gọi downstream. Xác minh từ spring-configuration-metadata.json
+          # của spring-cloud-gateway-server-4.3.0: property nằm dưới server.webflux.httpclient.
+          # KHÔNG để vô hạn — request treo sẽ giữ connection và làm cạn pool.
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
           # Tắt auto-routing theo serviceId; ta khai báo route tường minh bên dưới.
           discovery:
             locator:
@@ -30,6 +36,19 @@ spring:
               uri: lb://PRODUCT-SERVICE
               predicates:
                 - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/products
+                    # CHỈ các status này được tính là FAILURE (mở circuit).
+                    # Mọi 4xx nghiệp vụ (400/401/403/404/409/422/429) KHÔNG có ở đây
+                    # nên không làm tăng failure rate — đúng yêu cầu.
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
 
             # ---------- ORDER SERVICE (8083) ----------
             - id: order-service
@@ -47,11 +66,38 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+# ----- Circuit Breaker (Resilience4j 2.2.0, qua spring-cloud-circuitbreaker-reactor 3.3.0) -----
+# MỖI downstream service có instance RIÊNG: product lỗi không được làm mở circuit của order.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${CB_SLIDING_WINDOW_SIZE:20}
+        minimumNumberOfCalls: ${CB_MINIMUM_NUMBER_OF_CALLS:10}
+        failureRateThreshold: ${CB_FAILURE_RATE_THRESHOLD:50}
+        slowCallRateThreshold: ${CB_SLOW_CALL_RATE_THRESHOLD:50}
+        slowCallDurationThreshold: ${CB_SLOW_CALL_DURATION:2s}
+        waitDurationInOpenState: ${CB_WAIT_DURATION_OPEN_STATE:10s}
+        permittedNumberOfCallsInHalfOpenState: ${CB_HALF_OPEN_CALLS:3}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: true
+    instances:
+      productServiceCircuitBreaker:
+        baseConfig: default
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        # circuitbreakers/circuitbreakerevents: quan sát state CLOSED/OPEN/HALF_OPEN
+        include: health,info,gateway,circuitbreakers,circuitbreakerevents,metrics
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
 
 logging:
   level:

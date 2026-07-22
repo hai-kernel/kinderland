@@ -1,6 +1,6 @@
 # ----- payment-service: thanh toán (VNPay + COD). Port 8086, DB kinderland_payment_db. -----
 server:
-  port: 8086
+  port: 8084
 
 spring:
   # ----- Database RIÊNG của payment-service -----
