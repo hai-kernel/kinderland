@@ -1,0 +1,121 @@
+# =====================================================================================
+# CI cho Kinderland Microservices — Phase A.
+# CHỈ build + test. KHÔNG deploy, KHÔNG push image, KHÔNG cần production secret.
+#
+# LƯU Ý VỊ TRÍ: file này ở REPO ROOT (.github/workflows/), nhưng Maven root nằm trong
+# thư mục con kinderland-microservices/ -> mọi path phải tính từ workspace root.
+# =====================================================================================
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, production, main]
+  push:
+    branches: [dev, production, main]
+
+# Quyền tối thiểu: CI không cần packages:write hay id-token:write.
+permissions:
+  contents: read
+
+# PR mới push liên tục -> huỷ run cũ để tiết kiệm runner.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_DIR: kinderland-microservices
+
+jobs:
+  maven-verify:
+    name: Maven verify (Java 21)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Java 21 theo java.version trong parent pom. KHÔNG dùng 24 chỉ vì IDE local đang chạy 24.
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Repo clone từ Windows có thể mất execute bit của mvnw.
+      - name: Make mvnw executable
+        run: chmod +x ./mvnw
+        working-directory: ${{ env.MAVEN_DIR }}
+
+      # KHÔNG cần fixture env: đã kiểm chứng `mvnw clean verify` pass với môi trường
+      # HOÀN TOÀN TRỐNG (10 module, 14 test). Toàn bộ test hiện là unit test thuần
+      # (Mockito + khởi tạo Properties trực tiếp), KHÔNG có @SpringBootTest nào,
+      # nên Spring context không chạy và @Validated @NotBlank không kích hoạt.
+      #
+      # KHI NÀO PHẢI THÊM LẠI: ngay khi có @SpringBootTest đầu tiên nạp application
+      # context, các property fail-fast sẽ bắt buộc. Lúc đó thêm fixture GIẢ
+      # (VNPAY_TMN_CODE=test-tmn ...), TUYỆT ĐỐI không dùng sandbox secret thật.
+      - name: Maven verify
+        working-directory: ${{ env.MAVEN_DIR }}
+        run: ./mvnw -B clean verify
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          if-no-files-found: ignore
+          path: |
+            kinderland-microservices/**/target/surefire-reports/**
+            kinderland-microservices/**/target/failsafe-reports/**
+
+  docker-build:
+    name: Docker build (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    needs: maven-verify
+    strategy:
+      fail-fast: false
+      matrix:
+        # CHỈ eureka-server: đây là service duy nhất đã được chuyển sang multi-stage
+        # và build thật thành công. 7 service còn lại vẫn là Dockerfile single-stage
+        # (chỉ `COPY target/*.jar`) nên sẽ FAIL trên runner sạch — thêm vào đây bây giờ
+        # chỉ làm CI đỏ mà không mang lại thông tin gì mới.
+        #
+        # TODO Phase A (còn lại): chuyển sang multi-stage rồi thêm vào matrix:
+        #   config-server, api-gateway, auth-service, product-service,
+        #   order-service, payment-service, notification-service
+        service:
+          - eureka-server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # QUAN TRỌNG: context/file của build-push-action resolve theo WORKSPACE ROOT,
+      # KHÔNG theo working-directory. Build context phải là Maven reactor root vì
+      # Dockerfile cần parent pom + toàn bộ 9 module pom.
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./kinderland-microservices
+          file: ./kinderland-microservices/${{ matrix.service }}/Dockerfile
+          push: false
+          tags: kinderland-${{ matrix.service }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  compose-validate:
+    name: Docker Compose config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # `docker compose config` yêu cầu các biến bắt buộc (${VAR:?}) phải có giá trị.
+      # Dùng giá trị giả chỉ để validate cú pháp, không phải cấu hình thật.
+      - name: Validate docker-compose.yml
+        working-directory: ${{ env.MAVEN_DIR }}
+        env:
+          JWT_SECRET: ci-validate
+          GOOGLE_CLIENT_ID: ci-validate
+          AWS_S3_BUCKET: ci-validate
+          VNPAY_TMN_CODE: ci-validate
+          VNPAY_SECRET_KEY: ci-validate
+        run: docker compose -f docker-compose.yml config --quiet

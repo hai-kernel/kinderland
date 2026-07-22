@@ -52,3 +52,10 @@ logs/
 Thumbs.db
 kinderland-microservices/.env.example
 kinderland-microservices/.env.example
+
+# ----- Secret hygiene (Phase A CI) -----
+*.pem
+*.key
+.env.*
+!.env.example
+!.env.production.example
