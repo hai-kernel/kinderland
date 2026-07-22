@@ -12,12 +12,6 @@ spring:
       timeout: ${REDIS_TIMEOUT:2s}
       connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
 
-# Trusted proxy: MẶC ĐỊNH TẮT. Chỉ bật khi Gateway thật sự nằm sau Nginx/LB,
-# vì tin X-Forwarded-For khi Gateway public trực tiếp = client tự giả IP để vượt limit.
-gateway:
-  trusted-proxies:
-    enabled: ${TRUSTED_PROXY_ENABLED:false}
-    addresses: ${TRUSTED_PROXY_ADDRESSES:}
   cloud:
     gateway:
       # LƯU Ý 2025.0.0: cấu hình route nằm dưới 'server.webflux'
@@ -120,3 +114,11 @@ logging:
   level:
     org.springframework.cloud.gateway: INFO
     kinderland.gateway: DEBUG
+
+# ----- Trusted proxy cho rate limiter -----
+# MẶC ĐỊNH TẮT. Chỉ bật khi Gateway thật sự nằm sau Nginx/LB.
+# Tin X-Forwarded-For khi Gateway public trực tiếp = client tự giả IP để vượt giới hạn.
+gateway:
+  trusted-proxies:
+    enabled: ${TRUSTED_PROXY_ENABLED:false}
+    addresses: ${TRUSTED_PROXY_ADDRESSES:}

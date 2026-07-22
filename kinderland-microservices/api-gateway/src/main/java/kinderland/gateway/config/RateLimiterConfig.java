@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
@@ -59,7 +60,16 @@ public class RateLimiterConfig {
         };
     }
 
-    /** Key theo IP client. Dùng cho route public (không cần đăng nhập). */
+    /**
+     * Key theo IP client. Dùng cho route public (không cần đăng nhập).
+     *
+     * @Primary BẮT BUỘC: RequestRateLimiterGatewayFilterFactory inject MỘT KeyResolver mặc định.
+     * Có 3 bean mà không chỉ định primary -> Gateway không khởi động được
+     * ("expected single matching bean but found 3"). Chọn IP làm mặc định vì nó
+     * hoạt động cả khi chưa đăng nhập; route nào cần resolver khác thì chỉ định
+     * tường minh bằng key-resolver: "#{@tenBean}".
+     */
+    @Primary
     @Bean
     public KeyResolver clientIpKeyResolver() {
         return exchange -> Mono.just("ip:" + hash(resolveClientIp(exchange)));
