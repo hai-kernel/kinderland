@@ -99,7 +99,12 @@ services:
 
   # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DISCOVERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   eureka-server:
-    build: ./eureka-server
+    # Context PHẢI là Maven reactor root (thư mục chứa file compose này), KHÔNG phải
+    # ./eureka-server: Dockerfile đã chuyển sang multi-stage và cần parent pom cùng
+    # toàn bộ 9 module pom.xml (root pom khai báo 9 module nên Maven parse cả reactor).
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
     container_name: kinderland-eureka
     ports:
       - "8761:8761"
