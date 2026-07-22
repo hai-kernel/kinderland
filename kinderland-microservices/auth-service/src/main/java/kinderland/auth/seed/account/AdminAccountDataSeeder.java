@@ -12,13 +12,19 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Component
 @Order(20)
-@ConditionalOnProperty(name = "app.seed.account.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+        name = "app.seed.account.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 @RequiredArgsConstructor
 public class AdminAccountDataSeeder extends AbstractDataSeeder {
+
+    private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123456";
+    private static final String DEFAULT_MANAGER_PASSWORD = "Manager@123456";
 
     private final AccountRepository accountRepository;
     private final PasswordEncoder passwordEncoder;
@@ -32,52 +38,151 @@ public class AdminAccountDataSeeder extends AbstractDataSeeder {
     @Transactional
     public void seed() {
         logStart();
-        
-        String defaultPassword = System.getenv("SEED_DEFAULT_PASSWORD");
-        if (defaultPassword == null || defaultPassword.isEmpty()) {
-            defaultPassword = "Seed@123456";
-            log.warn("SEED_DEFAULT_PASSWORD environment variable not set. Using default development password.");
-        }
-        
-        String encodedPassword = passwordEncoder.encode(defaultPassword);
-        
+
+        String adminPassword = getPasswordFromEnvironment(
+                "SEED_ADMIN_PASSWORD",
+                DEFAULT_ADMIN_PASSWORD
+        );
+
+        String managerPassword = getPasswordFromEnvironment(
+                "SEED_MANAGER_PASSWORD",
+                DEFAULT_MANAGER_PASSWORD
+        );
+
         int created = 0;
         int skipped = 0;
 
-        List<AdminSeedDef> admins = List.of(
-                new AdminSeedDef("admin", "admin@kinderland.vn", "Admin", "Kinderland", Account.Role.ADMIN),
-                new AdminSeedDef("manager", "manager@kinderland.vn", "Store", "Manager", Account.Role.MANAGER),
-                new AdminSeedDef("product_admin", "product.admin@kinderland.vn", "Product", "Admin", Account.Role.MANAGER),
-                new AdminSeedDef("marketing_admin", "marketing.admin@kinderland.vn", "Marketing", "Admin", Account.Role.MANAGER),
-                new AdminSeedDef("support", "support@kinderland.vn", "Support", "Staff", Account.Role.MANAGER)
+        List<AdminSeedDef> accounts = List.of(
+                new AdminSeedDef(
+                        "admin",
+                        "admin@kinderland.vn",
+                        "Admin",
+                        "Kinderland",
+                        Account.Role.ADMIN
+                ),
+                new AdminSeedDef(
+                        "manager",
+                        "manager@kinderland.vn",
+                        "Store",
+                        "Manager",
+                        Account.Role.MANAGER
+                ),
+                new AdminSeedDef(
+                        "product_admin",
+                        "product.admin@kinderland.vn",
+                        "Product",
+                        "Admin",
+                        Account.Role.MANAGER
+                ),
+                new AdminSeedDef(
+                        "marketing_admin",
+                        "marketing.admin@kinderland.vn",
+                        "Marketing",
+                        "Admin",
+                        Account.Role.MANAGER
+                ),
+                new AdminSeedDef(
+                        "support",
+                        "support@kinderland.vn",
+                        "Support",
+                        "Staff",
+                        Account.Role.MANAGER
+                )
         );
 
-        for (AdminSeedDef def : admins) {
-            if (accountRepository.existsByEmail(def.email)) {
-                log.info("Skipped admin account: {}", def.email);
+        for (AdminSeedDef accountDefinition : accounts) {
+            if (accountRepository.existsByEmail(accountDefinition.email())) {
+                log.info(
+                        "Skipped seeded account because email already exists: {}",
+                        accountDefinition.email()
+                );
+
                 skipped++;
                 continue;
             }
 
-            Account account = Account.builder()
-                    .username(def.username)
-                    .email(def.email)
-                    .firstName(def.firstName)
-                    .lastName(def.lastName)
-                    .password(encodedPassword)
-                    .role(def.role)
-                    .isActive(true)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
+            String rawPassword = getPasswordForRole(
+                    accountDefinition.role(),
+                    adminPassword,
+                    managerPassword
+            );
+
+            Account account = buildAccount(
+                    accountDefinition,
+                    rawPassword
+            );
 
             accountRepository.save(account);
-            log.info("Created admin account: {}", def.email);
+
+            log.info(
+                    "Created seeded account: email={}, role={}",
+                    accountDefinition.email(),
+                    accountDefinition.role()
+            );
+
             created++;
         }
 
         logCompleted(created, skipped);
     }
-    
-    private record AdminSeedDef(String username, String email, String firstName, String lastName, Account.Role role) {}
+
+    private Account buildAccount(
+            AdminSeedDef definition,
+            String rawPassword
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+
+        return Account.builder()
+                .username(definition.username())
+                .email(definition.email())
+                .firstName(definition.firstName())
+                .lastName(definition.lastName())
+                .password(passwordEncoder.encode(rawPassword))
+                .role(definition.role())
+                .isActive(true)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+
+    private String getPasswordForRole(
+            Account.Role role,
+            String adminPassword,
+            String managerPassword
+    ) {
+        return switch (role) {
+            case ADMIN -> adminPassword;
+            case MANAGER -> managerPassword;
+            default -> throw new IllegalArgumentException(
+                    "Unsupported seeded account role: " + role
+            );
+        };
+    }
+
+    private String getPasswordFromEnvironment(
+            String environmentVariable,
+            String developmentDefault
+    ) {
+        String password = System.getenv(environmentVariable);
+
+        if (password == null || password.isBlank()) {
+            log.warn(
+                    "{} is not configured. Using development default password.",
+                    environmentVariable
+            );
+
+            return developmentDefault;
+        }
+
+        return password;
+    }
+
+    private record AdminSeedDef(
+            String username,
+            String email,
+            String firstName,
+            String lastName,
+            Account.Role role
+    ) {
+    }
 }
