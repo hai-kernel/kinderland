@@ -38,6 +38,12 @@ spring:
             # ---------- PRODUCT SERVICE (8082) ----------
             - id: product-service
               uri: lb://PRODUCT-SERVICE
+              # Ghi de response-timeout RIENG cho route nay (don vi: ms).
+              # Global la 5s (dong 26) - qua ngan cho POST/PUT co upload anh len S3.
+              # Chi noi long dung route product, cac route khac giu 5s.
+              metadata:
+                response-timeout: ${GATEWAY_PRODUCT_RESPONSE_TIMEOUT_MS:30000}
+                connect-timeout: ${GATEWAY_PRODUCT_CONNECT_TIMEOUT_MS:3000}
               predicates:
                 - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
               filters:
@@ -98,6 +104,26 @@ resilience4j:
     instances:
       productServiceCircuitBreaker:
         baseConfig: default
+        # product-service co endpoint upload anh len S3 (POST/PUT /api/v1/products).
+        # Upload luon cham hon 2s -> voi slowCallDurationThreshold mac dinh 2s thi moi
+        # lan upload bi tinh la "slow call"; qua 50% la circuit MO va GET cung 503 theo.
+        slowCallDurationThreshold: ${CB_PRODUCT_SLOW_CALL_DURATION:20s}
+
+  # ----- TimeLimiter -----
+  # BAT BUOC khai bao. Spring Cloud CircuitBreaker Resilience4j mac dinh timeout 1 GIAY.
+  # Moi request cham hon 1s -> TimeoutException -> fallbackUri -> 503 /fallback/products,
+  # DU product-service hoan toan khoe manh va circuit dang CLOSED.
+  # Do la ly do GET (nhanh) chay duoc con POST/PUT co upload S3 (cham) luon 503.
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: ${CB_TIMEOUT_DURATION:10s}
+        cancelRunningFuture: true
+    instances:
+      productServiceCircuitBreaker:
+        baseConfig: default
+        # Rieng product: upload S3 can nhieu thoi gian hon.
+        timeoutDuration: ${CB_PRODUCT_TIMEOUT_DURATION:35s}
 
 management:
   endpoints:
