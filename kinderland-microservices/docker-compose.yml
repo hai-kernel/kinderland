@@ -134,6 +134,9 @@ services:
     ports:
       - "8080:8080"
     environment:
+      # api-gateway khong co seeder, dat dev cho dong bo profile toan he thong
+      # (Config Server se tra api-gateway/dev thay vi api-gateway/default).
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -163,6 +166,9 @@ services:
     ports:
       - "8081:8081"
     environment:
+      # Profile dev -> Config Server tra ve application-dev.yml (app.seed.*).
+      # Thieu bien nay: DataSeedCoordinator bi @Profile("dev") chan -> KHONG seed.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       CONFIG_SERVER_URL: http://config-server:8888
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -207,6 +213,9 @@ services:
     ports:
       - "8082:8082"
     environment:
+      # Profile dev -> Config Server tra ve application-dev.yml (app.seed.*).
+      # Thieu bien nay: DataSeedCoordinator bi @Profile("dev") chan -> KHONG seed.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       CONFIG_SERVER_URL: http://config-server:8888
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -245,6 +254,9 @@ services:
     ports:
       - "8083:8083"
     environment:
+      # Profile dev -> Config Server tra ve application-dev.yml (app.seed.*).
+      # Thieu bien nay: DataSeedCoordinator bi @Profile("dev") chan -> KHONG seed.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       CONFIG_SERVER_URL: http://config-server:8888
       DB_HOST: postgres
       DB_PORT: "5432"
@@ -279,6 +291,8 @@ services:
     ports:
       - "8085:8085"
     environment:
+      # notification-service khong co seeder, dat dev cho dong bo profile toan he thong.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
@@ -312,6 +326,9 @@ services:
     ports:
       - "8084:8084"
     environment:
+      # Profile dev -> Config Server tra ve application-dev.yml (app.seed.*).
+      # Thieu bien nay: DataSeedCoordinator bi @Profile("dev") chan -> KHONG seed.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
       CONFIG_SERVER_URL: http://config-server:8888
       DB_HOST: postgres
       DB_PORT: "5432"
