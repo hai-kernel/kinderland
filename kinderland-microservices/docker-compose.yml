@@ -72,7 +72,10 @@ services:
 
   # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIG SERVER (pháº£i cháº¡y TRÆ¯á»šC) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   config-server:
-    build: ./config-server
+    # Context = Maven reactor root (xem giải thích ở eureka-server).
+    build:
+      context: .
+      dockerfile: config-server/Dockerfile
     container_name: kinderland-config-server
     ports:
       - "8888:8888"

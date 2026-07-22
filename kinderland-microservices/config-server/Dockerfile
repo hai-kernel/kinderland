@@ -1,9 +1,56 @@
-# Yêu cầu: chạy `mvn clean package` trước để có target/*.jar
+# =====================================================================================
+# Multi-stage build cho config-server.
+#
+# BUILD CONTEXT PHẢI LÀ kinderland-microservices/ (Maven reactor root), KHÔNG phải
+# thư mục service — cần parent pom, và Maven parse TOÀN BỘ reactor (root pom khai báo
+# 9 module) nên thiếu bất kỳ module pom.xml nào là build fail.
+#
+#   docker build -f config-server/Dockerfile -t kinderland-config-server:phase-a .
+# =====================================================================================
+
+FROM maven:3.9-eclipse-temurin-21 AS builder
+WORKDIR /workspace
+
+# --- Lớp 1: chỉ pom.xml -> cache lớp dependency, đổi source KHÔNG phá cache này.
+COPY pom.xml .
+COPY kinderland-common/pom.xml       kinderland-common/pom.xml
+COPY config-server/pom.xml           config-server/pom.xml
+COPY eureka-server/pom.xml           eureka-server/pom.xml
+COPY api-gateway/pom.xml             api-gateway/pom.xml
+COPY auth-service/pom.xml            auth-service/pom.xml
+COPY product-service/pom.xml         product-service/pom.xml
+COPY order-service/pom.xml           order-service/pom.xml
+COPY notification-service/pom.xml    notification-service/pom.xml
+COPY payment-service/pom.xml         payment-service/pom.xml
+
+RUN mvn -B -pl config-server -am dependency:go-offline -DskipTests || true
+
+# --- Lớp 2: source. config-server KHÔNG phụ thuộc kinderland-common.
+COPY config-server/src config-server/src
+
+# skipTests CÓ CHỦ Ý: CI đã chạy `mvn clean verify` (test đầy đủ) TRƯỚC job build image.
+# KHÔNG dùng -Dmaven.test.skip=true và KHÔNG skip test ở bước CI verify.
+RUN mvn -B -pl config-server -am package -DskipTests
+
+# Spring Boot repackage để lại cả *.jar và *.jar.original -> chọn tường minh,
+# tránh COPY wildcard match nhầm file .original (không chạy được).
+RUN cp "$(find config-server/target -maxdepth 1 -name '*.jar' ! -name '*.original' | head -n 1)" /tmp/app.jar
+
+
 FROM eclipse-temurin:21-jre
 WORKDIR /app
-# wget dùng cho healthcheck /actuator/health trong docker-compose.full.yml
+
+# wget cho HEALTHCHECK trong docker-compose (image temurin-jre không có curl).
 RUN apt-get update && apt-get install -y --no-install-recommends wget \
-    && rm -rf /var/lib/apt/lists/*
-COPY target/*.jar app.jar
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -r -u 1001 -m appuser
+
+COPY --from=builder /tmp/app.jar app.jar
+RUN chown appuser:appuser /app/app.jar
+
+USER appuser
+
 EXPOSE 8888
-ENTRYPOINT ["java", "-jar", "app.jar"]
+
+ENV JAVA_OPTS=""
+ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar"]
