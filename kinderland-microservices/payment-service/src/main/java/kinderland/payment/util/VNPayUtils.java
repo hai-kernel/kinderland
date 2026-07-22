@@ -42,7 +42,25 @@ public final class VNPayUtils {
         }
 
         String calculatedHash = HmacUtil.hmacSHA512(secretKey, hashData.toString());
-        return calculatedHash != null && calculatedHash.equalsIgnoreCase(receivedHash);
+        return constantTimeHexEquals(calculatedHash, receivedHash);
+    }
+
+    /**
+     * So sánh chữ ký bằng constant-time để không rò rỉ thông tin qua thời gian phản hồi.
+     *
+     * String.equals/equalsIgnoreCase thoát sớm ở byte đầu tiên khác nhau, cho phép kẻ tấn công
+     * dò dần từng ký tự chữ ký qua đo thời gian. MessageDigest.isEqual so sánh toàn bộ độ dài.
+     *
+     * VNPay có thể trả hex hoa hoặc thường -> chuẩn hoá về chữ thường trước khi so sánh
+     * (giữ đúng hành vi cũ của equalsIgnoreCase, chỉ khác ở chỗ không thoát sớm).
+     */
+    static boolean constantTimeHexEquals(String expected, String actual) {
+        if (expected == null || actual == null) {
+            return false;
+        }
+        byte[] a = expected.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII);
+        byte[] b = actual.toLowerCase(java.util.Locale.ROOT).getBytes(StandardCharsets.US_ASCII);
+        return java.security.MessageDigest.isEqual(a, b);
     }
 
     /** Gom toàn bộ query param của request callback thành Map. */

@@ -37,6 +37,7 @@ public class PaymentService {
     VNPayGateway vnPayGateway;
     PaymentEventPublisher eventPublisher;
     PaymentMapper paymentMapper;
+    kinderland.payment.config.VnPayProperties vnPayProperties;
 
     @Value("${vnpay.secret-key}")
     @lombok.experimental.NonFinal
@@ -77,24 +78,14 @@ public class PaymentService {
                     .build();
         }
 
-        // VNPAY nhưng CHƯA cấu hình cổng (dev/demo: secret-key trống) → mô phỏng thành công ngay,
-        // tránh crash HMAC "Empty key" + để luồng "card" trên FE chạy trọn vẹn (redirect về trang kết quả).
-        if (vnpSecretKey == null || vnpSecretKey.isBlank()) {
-            log.warn("VNPay chưa cấu hình (vnpay.secret-key trống) → MÔ PHỎNG thanh toán SUCCESS cho orderId={}. "
-                    + "Cấu hình VNPAY_TMN_CODE/VNPAY_SECRET_KEY để dùng cổng thật.", payment.getOrderId());
-            markSuccess(payment, "SIMULATED");
-            return PaymentInitResponse.builder()
-                    .orderId(payment.getOrderId())
-                    .method(payment.getMethod().name())
-                    .status(payment.getStatus().name())   // SUCCESS
-                    // Cùng trang kết quả với luồng VNPay thật (handleVnpayReturn) để FE hiển thị nhất quán.
-                    .paymentUrl(frontendUrl + "/payment-result?status=success")
-                    .build();
-        }
+        // ĐÃ XOÁ nhánh "SIMULATED": trước đây khi vnpay.secret-key trống thì tự đánh SUCCESS,
+        // nghĩa là mọi đơn được coi như đã thanh toán mà không ai trả tiền. Giờ cấu hình thiếu
+        // sẽ khiến service không khởi động được (VnPayProperties @Validated @NotBlank).
 
-        // VNPAY (đã cấu hình): giữ PENDING, trả URL để client redirect sang cổng thanh toán.
-        paymentRepository.save(payment);
+        // VNPAY: giữ PENDING, trả URL để client redirect sang cổng thanh toán.
         String txnRef = payment.getOrderId() + "_" + System.currentTimeMillis();
+        payment.setTxnRef(txnRef);
+        paymentRepository.save(payment);
         String ip = (req.getIpAddress() == null || req.getIpAddress().isBlank()) ? "127.0.0.1" : req.getIpAddress();
         String url = vnPayGateway.createPaymentUrl(txnRef, payment.getAmount(), ip);
 
@@ -109,23 +100,29 @@ public class PaymentService {
     // =====================================================================
     // 2) VNPay REDIRECT VỀ (browser) -> trả URL trang kết quả của frontend
     // =====================================================================
-    @Transactional
+    @Transactional(readOnly = true)
     public String handleVnpayReturn(HttpServletRequest request) {
         Map<String, String> params = VNPayUtils.getVNPayResponseParams(request);
-        String outcome = applyVnpayResult(params);
+        String outcome = readVnpayOutcome(params);
         return frontendUrl + "/payment-result?status=" + outcome;
     }
 
     // =====================================================================
     // 3) FRONTEND gọi verify (sau khi VNPay redirect) -> trả status string
     // =====================================================================
-    @Transactional
+    @Transactional(readOnly = true)
     public String verifyVnpay(Map<String, String> params) {
-        return applyVnpayResult(params);
+        return readVnpayOutcome(params);
     }
 
-    /** Lõi xử lý kết quả VNPay dùng chung cho cả return & verify. */
-    private String applyVnpayResult(Map<String, String> params) {
+    /**
+     * CHỈ ĐỌC. Return URL/verify không phải nguồn sự thật: trình duyệt có thể bị chỉnh sửa,
+     * bỏ qua, hoặc gọi lại nhiều lần. Chỉ IPN (server-to-server, có chữ ký) được cập nhật DB.
+     *
+     * Trả trạng thái ĐANG LƯU trong DB (do IPN ghi), không phải trạng thái suy ra từ query.
+     * Nếu IPN chưa kịp tới, trả "pending" để frontend hiển thị "đang xác nhận" rồi poll tiếp.
+     */
+    private String readVnpayOutcome(Map<String, String> params) {
         if (!VNPayUtils.verifySignature(params, vnpSecretKey)) {
             return "invalid";
         }
@@ -133,24 +130,11 @@ public class PaymentService {
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new AppException(ErrorCode.PAYMENT_NOT_FOUND));
 
-        if (payment.getStatus() == PaymentStatus.SUCCESS) {
-            return "success"; // đã xử lý trước đó (idempotent)
-        }
-
-        String responseCode = params.get("vnp_ResponseCode");
-        if ("00".equals(responseCode)) {
-            markSuccess(payment, params.get("vnp_TransactionNo"));
-            return "success";
-        } else if ("24".equals(responseCode)) {
-            // Người dùng huỷ trên cổng -> giữ PENDING để có thể thử lại.
-            payment.setStatus(PaymentStatus.PENDING);
-            paymentRepository.save(payment);
-            return "cancelled";
-        } else {
-            payment.setStatus(PaymentStatus.FAILED);
-            paymentRepository.save(payment);
-            return "failed";
-        }
+        return switch (payment.getStatus()) {
+            case SUCCESS -> "success";
+            case FAILED -> "failed";
+            default -> "pending";
+        };
     }
 
     // =====================================================================
@@ -160,16 +144,44 @@ public class PaymentService {
     // =====================================================================
     @Transactional
     public Map<String, String> handleVnpayIpn(Map<String, String> params) {
+        try {
+            return processVnpayIpn(params);
+        } catch (Exception e) {
+            // Bao toàn bộ xử lý: VNPay chỉ hiểu {RspCode, Message}. Nếu để exception thoát ra,
+            // Spring trả HTML/JSON lỗi mà VNPay không parse được và sẽ retry vô ích.
+            // KHÔNG trả stack trace cho VNPay; log lại phía mình để điều tra.
+            log.error("Lỗi ngoài dự kiến khi xử lý VNPay IPN. txnRef={}", params.get("vnp_TxnRef"), e);
+            return ipnResponse("99", "Unknown error");
+        }
+    }
+
+    private Map<String, String> processVnpayIpn(Map<String, String> params) {
         if (!VNPayUtils.verifySignature(params, vnpSecretKey)) {
             return ipnResponse("97", "Invalid Checksum");
         }
 
-        Payment payment;
-        try {
-            payment = paymentRepository.findByOrderId(parseOrderId(params.get("vnp_TxnRef"))).orElse(null);
-        } catch (Exception e) {
-            payment = null;
+        // Callback phải thuộc đúng merchant của mình. Chữ ký đúng nhưng TmnCode lạ
+        // nghĩa là cấu hình sai hoặc callback không dành cho hệ thống này -> KHÔNG cập nhật gì.
+        String callbackTmnCode = params.get("vnp_TmnCode");
+        if (callbackTmnCode == null || !callbackTmnCode.equals(vnPayProperties.getTmnCode())) {
+            log.warn("IPN bị từ chối: vnp_TmnCode không khớp merchant. txnRef={}", params.get("vnp_TxnRef"));
+            // VNPay không định nghĩa mã riêng cho TmnCode sai. Dùng 01 (Order not Found)
+            // vì với merchant này giao dịch đó thực sự không tồn tại — giữ đúng contract VNPay.
+            return ipnResponse("01", "Order not found");
         }
+
+        // CHỈ bắt lỗi PARSE txnRef -> đó mới thực sự là "không tìm thấy đơn" (01).
+        // KHÔNG bắt lỗi hạ tầng ở đây: catch(Exception) rộng trước đây biến lỗi DB thành 01,
+        // khiến VNPay tưởng đơn không tồn tại và NGỪNG RETRY -> mất giao dịch.
+        // Lỗi DB phải thoát ra outer catch để trả 99, VNPay sẽ retry lại sau.
+        Long orderId;
+        try {
+            orderId = parseOrderId(params.get("vnp_TxnRef"));
+        } catch (AppException | NumberFormatException e) {
+            return ipnResponse("01", "Order not found");
+        }
+
+        Payment payment = paymentRepository.findByOrderId(orderId).orElse(null);
         if (payment == null) {
             return ipnResponse("01", "Order not found");
         }
@@ -189,7 +201,13 @@ public class PaymentService {
             return ipnResponse("02", "Order already confirmed");
         }
 
-        if ("00".equals(params.get("vnp_ResponseCode"))) {
+        // VNPay yêu cầu CẢ HAI field đều "00" mới coi là thanh toán thành công.
+        // Chỉ dựa vnp_ResponseCode là thiếu: có trường hợp ResponseCode=00 nhưng
+        // TransactionStatus khác 00 (giao dịch chưa hoàn tất/bị nghi ngờ) -> KHÔNG được đánh SUCCESS.
+        boolean paid = "00".equals(params.get("vnp_ResponseCode"))
+                && "00".equals(params.get("vnp_TransactionStatus"));
+
+        if (paid) {
             markSuccess(payment, params.get("vnp_TransactionNo"));
         } else {
             payment.setStatus(PaymentStatus.FAILED);

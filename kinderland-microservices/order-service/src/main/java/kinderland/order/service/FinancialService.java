@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Báo cáo tài chính, port từ monolith. Doanh thu gộp = tổng đơn COMPLETED (mono dùng DELIVERED);
@@ -22,6 +23,24 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class FinancialService {
+
+    /**
+     * Các trạng thái được TÍNH LÀ DOANH THU (tiền đã thu).
+     *
+     * Vòng đời: PENDING -> PAID -> SHIPPING -> DELIVERED -> COMPLETED (hoặc CANCELLED).
+     * Trước đây chỉ tính COMPLETED, nên đơn đã thanh toán nhưng chưa giao xong không được
+     * tính -> dashboard hiện 0đ dù tiền đã về.
+     *
+     * LOẠI TRỪ:
+     *  - PENDING   : chưa thanh toán
+     *  - CANCELLED : đã huỷ, không có tiền
+     * Refund được trừ riêng ở netRevenue.
+     */
+    static final List<OrderStatus> REVENUE_STATUSES = List.of(
+            OrderStatus.PAID,
+            OrderStatus.SHIPPING,
+            OrderStatus.DELIVERED,
+            OrderStatus.COMPLETED);
 
     OrderRepository orderRepository;
     ReturnRequestRepository returnRequestRepository;
@@ -34,9 +53,9 @@ public class FinancialService {
         LocalDateTime endOfMonth = today.withDayOfMonth(today.lengthOfMonth()).atTime(23, 59, 59);
 
         // ── Doanh thu gộp (đơn COMPLETED) ──
-        BigDecimal totalRevenue = nz(orderRepository.getTotalRevenue(OrderStatus.COMPLETED));
-        BigDecimal todayRevenue = nz(orderRepository.getRevenueByDateRange(OrderStatus.COMPLETED, startOfDay, endOfDay));
-        BigDecimal thisMonthRevenue = nz(orderRepository.getRevenueByDateRange(OrderStatus.COMPLETED, startOfMonth, endOfMonth));
+        BigDecimal totalRevenue = nz(orderRepository.getTotalRevenue(REVENUE_STATUSES));
+        BigDecimal todayRevenue = nz(orderRepository.getRevenueByDateRange(REVENUE_STATUSES, startOfDay, endOfDay));
+        BigDecimal thisMonthRevenue = nz(orderRepository.getRevenueByDateRange(REVENUE_STATUSES, startOfMonth, endOfMonth));
 
         // ── Tiền hoàn (return REFUNDED) ──
         BigDecimal totalRefunds = nz(returnRequestRepository.getTotalRefundAmount(ReturnStatus.REFUNDED));
@@ -60,7 +79,7 @@ public class FinancialService {
     public BigDecimal getRevenueByDateRange(LocalDate start, LocalDate end) {
         LocalDateTime startDt = start.atStartOfDay();
         LocalDateTime endDt = end.atTime(23, 59, 59);
-        BigDecimal gross = nz(orderRepository.getRevenueByDateRange(OrderStatus.COMPLETED, startDt, endDt));
+        BigDecimal gross = nz(orderRepository.getRevenueByDateRange(REVENUE_STATUSES, startDt, endDt));
         BigDecimal refunds = nz(returnRequestRepository.getRefundAmountByDateRange(ReturnStatus.REFUNDED, startDt, endDt));
         return gross.subtract(refunds);
     }

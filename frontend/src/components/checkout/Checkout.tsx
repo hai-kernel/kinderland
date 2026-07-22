@@ -224,14 +224,33 @@ export default function Checkout() {
       }));
 
       // 6. Always call checkout to handle payment method + loyalty points
-      const checkoutPaymentMethod = paymentMethod === 'CARD' ? 'VNPAY' : 'COD';
+      // KHÔNG dùng ternary fallback: `x === 'CARD' ? 'VNPAY' : 'COD'` biến MỌI giá trị lạ
+      // (kể cả 'BANK' hoặc typo) thành COD một cách âm thầm — người dùng tưởng đã chọn
+      // thanh toán online nhưng đơn lại được tạo là COD.
+      const mapPaymentMethod = (ui: 'COD' | 'BANK' | 'CARD'): 'COD' | 'VNPAY' => {
+        switch (ui) {
+          case 'COD':
+            return 'COD';
+          case 'CARD':
+            return 'VNPAY';
+          default:
+            throw new Error('Phương thức thanh toán không được hỗ trợ');
+        }
+      };
+      const checkoutPaymentMethod = mapPaymentMethod(paymentMethod);
       try {
         const checkoutRes = await api.checkoutOrder(orderId, checkoutPaymentMethod, loyaltyDiscount);
 
         if (paymentMethod === 'CARD') {
           toast.dismiss(loadingToast);
-          if (checkoutRes.success && checkoutRes.data) {
-            window.location.href = checkoutRes.data;
+          // Backend trả BaseResponse<CheckoutResponse>:
+          //   { success, data: { orderId, paymentMethod, paymentStatus, paymentUrl, message } }
+          // data LÀ OBJECT, không phải string. Gán thẳng checkoutRes.data vào location.href
+          // khiến trình duyệt điều hướng tới chuỗi "[object Object]".
+          const paymentUrl: string | undefined = checkoutRes?.data?.paymentUrl;
+
+          if (checkoutRes.success && paymentUrl) {
+            window.location.href = paymentUrl;
             return;
           } else {
             throw new Error("Không lấy được link thanh toán");
@@ -531,10 +550,15 @@ export default function Checkout() {
                       className="size-5 text-[#AF140B]"
                     />
                     <div className="flex-1">
-                      <p className="font-bold text-gray-800">💳 Thẻ tín dụng / Ghi nợ</p>
+                      <p className="font-bold text-gray-800">💳 Thanh toán online qua VNPAY</p>
                       <p className="text-sm text-gray-600">
-                        Thanh toán bằng thẻ Visa, Mastercard
+                        Quét QR, thẻ ATM nội địa, Internet Banking hoặc thẻ Visa/Mastercard
                       </p>
+                      {paymentMethod === 'CARD' && (
+                        <p className="mt-1 text-sm font-medium text-[#AF140B]">
+                          Bạn sẽ được chuyển tới cổng thanh toán VNPAY sau khi tạo đơn.
+                        </p>
+                      )}
                     </div>
                   </label>
                 </div>

@@ -1,4 +1,4 @@
-# ----- notification-service: nghe Kafka notification-events và gửi email. Port 8084, KHÔNG có DB. -----
+# ----- notification-service: nghe Kafka notification-events và gửi email. Port 8085, KHÔNG có DB. -----
 server:
   port: 8085
 
