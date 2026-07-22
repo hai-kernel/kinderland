@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 
 @Component
 @Order(40)
-@ConditionalOnProperty(name = "app.seed.product-image.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.seed.product-image.enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class ProductImageDataSeeder extends AbstractDataSeeder {
 
