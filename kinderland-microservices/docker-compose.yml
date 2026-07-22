@@ -21,8 +21,8 @@ services:
     image: postgres:16
     container_name: kinderland-postgres
     environment:
-      POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "123456"
     volumes:
       - ./init-db:/docker-entrypoint-initdb.d:ro
       - kinderland-pgdata:/var/lib/postgresql/data
@@ -141,7 +141,7 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      DB_PASSWORD: "123456"
       EUREKA_URL: http://eureka-server:8761/eureka/
       # KAFKA_BROKERS = business messaging (Spring Cloud Stream)
       # KAFKA_BOOTSTRAP_SERVERS = Spring Cloud Bus. Cáº§n Cáº¢ HAI.
@@ -176,7 +176,7 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      DB_PASSWORD: "123456"
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -205,7 +205,7 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      DB_PASSWORD: "123456"
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -254,7 +254,7 @@ services:
       DB_HOST: postgres
       DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
-      DB_PASSWORD: ${DB_PASSWORD:-123456}
+      DB_PASSWORD: "123456"
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
