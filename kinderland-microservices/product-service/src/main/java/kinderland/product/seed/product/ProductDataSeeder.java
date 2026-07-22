@@ -67,16 +67,7 @@ public class ProductDataSeeder extends AbstractDataSeeder {
         products.add(new ProductDef("Xe cứu hỏa mô hình có âm thanh", "Xe đồ chơi", "Hasbro", new BigDecimal("249000"), 85));
         products.add(new ProductDef("Bộ ghép hình bản đồ Việt Nam", "Đồ chơi giáo dục", "Hape", new BigDecimal("149000"), 130));
 
-        // Generate 30 more products to reach 50
-        for (int i = 21; i <= 50; i++) {
-            products.add(new ProductDef(
-                    "Sản phẩm mẫu " + i,
-                    "Đồ chơi ngoài trời",
-                    "LEGO",
-                    new BigDecimal("199000"),
-                    50
-            ));
-        }
+
 
         int created = 0;
         int skipped = 0;

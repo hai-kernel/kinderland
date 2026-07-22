@@ -45,21 +45,38 @@ public class ProductImageDataSeeder extends AbstractDataSeeder {
             }
 
             // Create 3 images per product
-            for (int i = 1; i <= 3; i++) {
-                String placeholderUrl = "https://placehold.co/600x600?text=" + product.getName().replace(" ", "+") + "+" + i;
-                
-                Image image = Image.builder()
-                        .imageUrl(placeholderUrl)
-                        .fileName("placeholder-" + product.getName() + "-" + i + ".jpg")
-                        .entityType(EntityType.PRODUCT)
-                        .entityId(product.getId())
-                        .build();
-                
-                imageRepository.save(image);
-                created++;
-            }
+            String imageUrl = getProductImage(product.getName());
+
+            Image image = Image.builder()
+                    .imageUrl(imageUrl)
+                    .fileName(product.getName() + ".jpg")
+                    .entityType(EntityType.PRODUCT)
+                    .entityId(product.getId())
+                    .build();
+
+            imageRepository.save(image);
+            created++;
         }
 
         logCompleted(created, skipped);
+    }private String getProductImage(String productName) {
+
+        if (productName.contains("LEGO")) {
+            return "https://images.unsplash.com/photo-1587654780291-39c9404d746b";
+        }
+
+        if (productName.contains("Hot Wheels")) {
+            return "https://images.unsplash.com/photo-1558618666-fcd25c85cd64";
+        }
+
+        if (productName.contains("Barbie")) {
+            return "https://images.unsplash.com/photo-1594787318286-3d835c1d207f";
+        }
+
+        if (productName.contains("Play-Doh")) {
+            return "https://images.unsplash.com/photo-1596461404969-9ae70f2830c1";
+        }
+
+        return "https://images.unsplash.com/photo-1566576912320-d58ddd7a6088";
     }
 }
