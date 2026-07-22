@@ -56,6 +56,12 @@ public class SecurityConfig {
                         // Cho phép các dispatch này để lỗi thật hiện ra đúng status code.
                         // KHÔNG làm yếu bảo mật: client gọi thẳng /error vẫn là DispatcherType.REQUEST.
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
+                        // Actuator health/info: Docker HEALTHCHECK gọi bằng wget KHÔNG có token.
+                        // Thiếu dòng này -> 401 MISSING_TOKEN -> container 'unhealthy' dù app sống,
+                        // -> Gateway mở circuit breaker -> /fallback/products.
+                        // CHỈ mở health + info. KHÔNG mở /actuator/** vì busrefresh/env là endpoint
+                        // thay đổi trạng thái, phải giữ sau xác thực.
+                        .requestMatchers("/actuator/health", "/actuator/health/**", "/actuator/info").permitAll()
                         // Internal Feign calls between services — no auth required
                         .requestMatchers("/internal/**").permitAll()
                         // Swagger / OpenAPI docs — always public

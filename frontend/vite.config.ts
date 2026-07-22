@@ -1,9 +1,15 @@
 
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 import tailwindcss from '@tailwindcss/vite'
-export default defineConfig({
+
+// loadEnv đọc .env.local / .env — cần thiết vì import.meta.env KHÔNG tồn tại
+// trong file config (config chạy ở Node, không phải trình duyệt).
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, __dirname, '');
+
+  return {
   plugins: [react(), tailwindcss()],
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -60,11 +66,16 @@ export default defineConfig({
       // Proxy tất cả request /api sang API GATEWAY (8080).
       // KHÔNG trỏ thẳng vào auth-service (8081): gateway mới là nơi định tuyến
       // /api/v1/categories|products|orders... sang đúng microservice.
+      //
+      // Target lấy từ VITE_API_BASE_URL (.env.local) để trỏ được sang EC2.
+      // Trước đây target bị hard-code 'http://localhost:8080' nên mọi request
+      // đi vào máy local (không có gateway) -> fetch fail -> "Đăng nhập thất bại!".
       '/api': {
-        target: 'http://localhost:8080',
+        target: env.VITE_API_BASE_URL || 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
       },
     },
-  },
+    },
+  };
 });

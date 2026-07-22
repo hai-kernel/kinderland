@@ -59,3 +59,8 @@ kinderland-microservices/.env.example
 .env.*
 !.env.example
 !.env.production.example
+frontend/.env.example
+frontend/.env.example
+/frontend
+/frontend
+frontend/.env.example
