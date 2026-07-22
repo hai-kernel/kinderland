@@ -117,10 +117,19 @@ services:
     depends_on:
       config-server:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
 
   # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ GATEWAY a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   api-gateway:
-    build: ./api-gateway
+    # Context = Maven reactor root (Dockerfile multi-stage, xem config-server).
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
     container_name: kinderland-gateway
     ports:
       - "8080:8080"
@@ -137,10 +146,19 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   # a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€ SERVICES a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€a”€
   auth-service:
-    build: ./auth-service
+    # Context = Maven reactor root (Dockerfile multi-stage, xem config-server).
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
     container_name: kinderland-auth
     ports:
       - "8081:8081"
@@ -173,9 +191,18 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   product-service:
-    build: ./product-service
+    # Context = Maven reactor root (Dockerfile multi-stage, xem config-server).
+    build:
+      context: .
+      dockerfile: product-service/Dockerfile
     container_name: kinderland-product
     ports:
       - "8082:8082"
@@ -202,9 +229,18 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   order-service:
-    build: ./order-service
+    # Context = Maven reactor root (Dockerfile multi-stage, xem config-server).
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
     container_name: kinderland-order
     ports:
       - "8083:8083"
@@ -226,10 +262,19 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   # PORT 8085 (A‘A£ A‘a»•i ta»« 8084) a€” kha»›p config-repository/notification-service.yml
   notification-service:
-    build: ./notification-service
+    # Context = Maven reactor root (Dockerfile multi-stage, xem config-server).
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
     container_name: kinderland-notification
     ports:
       - "8085:8085"
@@ -247,13 +292,22 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
   # PORT 8084 a€” kha»›p `server.port` trong config-repository/payment-service.yml.
   # Caº¢NH BAO: port nA y A‘A£ A‘a»•i 2 laº§n (8085 -> 8086 -> 8084). Comment a»Y A‘aº§u file YAML A‘A³
   # vaº«n ghi 8086 vA  A‘ang SAI. Aa»•i port thA¬ phaº£i sa»a caº£ 3 nÆ¡i: config-repository,
   # docker-compose.yml vA  comment mA´ taº£.
   payment-service:
-    build: ./payment-service
+    # Context = Maven reactor root (Dockerfile multi-stage, xem config-server).
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
     container_name: kinderland-payment
     ports:
       - "8084:8084"
@@ -282,6 +336,12 @@ services:
         condition: service_started
       kafka:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
 
 volumes:
   kinderland-pgdata:
