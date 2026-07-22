@@ -42,12 +42,14 @@ spring:
                 - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
               filters:
                 # Rate limit theo IP cho public read. Redis token bucket.
-                - name: RequestRateLimiter
+                # JsonRequestRateLimiter (custom): giong RequestRateLimiter nhung tra body JSON
+                # khi bi tu choi. Ban chuan goi setComplete() -> body rong, khong sua duoc.
+                - name: JsonRequestRateLimiter
                   args:
-                    key-resolver: "#{@clientIpKeyResolver}"
-                    redis-rate-limiter.replenishRate: ${RATE_LIMIT_PUBLIC_REPLENISH_RATE:60}
-                    redis-rate-limiter.burstCapacity: ${RATE_LIMIT_PUBLIC_BURST_CAPACITY:100}
-                    redis-rate-limiter.requestedTokens: 1
+                    keyResolver: "#{@clientIpKeyResolver}"
+                    replenishRate: ${RATE_LIMIT_PUBLIC_REPLENISH_RATE:60}
+                    burstCapacity: ${RATE_LIMIT_PUBLIC_BURST_CAPACITY:100}
+                    requestedTokens: 1
                 - name: CircuitBreaker
                   args:
                     name: productServiceCircuitBreaker
