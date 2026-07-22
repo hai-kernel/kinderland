@@ -10,7 +10,7 @@ app:
 spring:
   # ----- Database RIÊNG của auth-service -----
   datasource:
-    url: jdbc:postgresql://localhost:5432/kinderland_auth_db
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/kinderland_auth_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:123456}
   jpa:

@@ -1,28 +1,28 @@
-# =====================================================================================
-# CHẠY TOÀN BỘ hệ thống trong Docker (hạ tầng + config-server + 6 service).
+﻿# =====================================================================================
+# CHáº Y TOÃ€N Bá»˜ há»‡ thá»‘ng trong Docker (háº¡ táº§ng + config-server + 6 service).
 #
-# Bước 1 (BẮT BUỘC): build jar trước
+# BÆ°á»›c 1 (Báº®T BUá»˜C): build jar trÆ°á»›c
 #     mvn -f pom.xml clean package -DskipTests
-# Bước 2:
+# BÆ°á»›c 2:
 #     docker compose -f docker-compose.yml up --build
 #
-# THỨ TỰ KHỞI ĐỘNG BẮT BUỘC:
-#     postgres/kafka/redis -> config-server -> eureka-server -> các service
-#     Mọi service đều có `spring.config.import: configserver:...` KHÔNG optional,
-#     nên config-server chết là service không khởi động được.
+# THá»¨ Tá»° KHá»žI Äá»˜NG Báº®T BUá»˜C:
+#     postgres/kafka/redis -> config-server -> eureka-server -> cÃ¡c service
+#     Má»i service Ä‘á»u cÃ³ `spring.config.import: configserver:...` KHÃ”NG optional,
+#     nÃªn config-server cháº¿t lÃ  service khÃ´ng khá»Ÿi Ä‘á»™ng Ä‘Æ°á»£c.
 #
-# LƯU Ý config-server đọc từ GIT (GitHub), KHÔNG đọc thư mục local.
-#     Sửa config-repository ở máy phải commit + push branch dev mới có hiệu lực.
+# LÆ¯U Ã config-server Ä‘á»c tá»« GIT (GitHub), KHÃ”NG Ä‘á»c thÆ° má»¥c local.
+#     Sá»­a config-repository á»Ÿ mÃ¡y pháº£i commit + push branch dev má»›i cÃ³ hiá»‡u lá»±c.
 # =====================================================================================
 services:
 
-  # ─────────────────────────── HẠ TẦNG ───────────────────────────
+  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Háº  Táº¦NG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   postgres:
     image: postgres:16
     container_name: kinderland-postgres
     environment:
       POSTGRES_USER: ${DB_USERNAME:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-123456}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-root}
     volumes:
       - ./init-db:/docker-entrypoint-initdb.d:ro
       - kinderland-pgdata:/var/lib/postgresql/data
@@ -44,14 +44,14 @@ services:
       retries: 10
 
   kafka:
-    # Pin version (không dùng 'latest') để môi trường tái lập được.
+    # Pin version (khÃ´ng dÃ¹ng 'latest') Ä‘á»ƒ mÃ´i trÆ°á»ng tÃ¡i láº­p Ä‘Æ°á»£c.
     image: apache/kafka:3.9.0
     container_name: kinderland-kafka
     environment:
       - KAFKA_NODE_ID=0
       - KAFKA_PROCESS_ROLES=controller,broker
       - KAFKA_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
-      # EXTERNAL cho client trên HOST (localhost:9092); INTERNAL cho container (kafka:29092).
+      # EXTERNAL cho client trÃªn HOST (localhost:9092); INTERNAL cho container (kafka:29092).
       - KAFKA_LISTENERS=EXTERNAL://:9092,INTERNAL://:29092,CONTROLLER://:9093
       - KAFKA_ADVERTISED_LISTENERS=EXTERNAL://localhost:9092,INTERNAL://kafka:29092
       - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
@@ -70,19 +70,19 @@ services:
       timeout: 10s
       retries: 12
 
-  # ─────────────────── CONFIG SERVER (phải chạy TRƯỚC) ───────────────────
+  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ CONFIG SERVER (pháº£i cháº¡y TRÆ¯á»šC) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   config-server:
     build: ./config-server
     container_name: kinderland-config-server
     ports:
       - "8888:8888"
     environment:
-      # Git backend: clone thẳng từ GitHub. Repo public nên KHÔNG cần token.
+      # Git backend: clone tháº³ng tá»« GitHub. Repo public nÃªn KHÃ”NG cáº§n token.
       CONFIG_GIT_URI: ${CONFIG_GIT_URI:-https://github.com/hai-kernel/kinderland.git}
-      # config-repository là THƯ MỤC CON trong monorepo -> bắt buộc có search-paths,
-      # thiếu nó Config Server tìm ở root repo và trả 0 property source.
+      # config-repository lÃ  THÆ¯ Má»¤C CON trong monorepo -> báº¯t buá»™c cÃ³ search-paths,
+      # thiáº¿u nÃ³ Config Server tÃ¬m á»Ÿ root repo vÃ  tráº£ 0 property source.
       CONFIG_GIT_SEARCH_PATHS: ${CONFIG_GIT_SEARCH_PATHS:-kinderland-microservices/config-repository}
-      # config-repository CHỈ tồn tại trên branch dev, branch main không có.
+      # config-repository CHá»ˆ tá»“n táº¡i trÃªn branch dev, branch main khÃ´ng cÃ³.
       CONFIG_GIT_BRANCH: ${CONFIG_GIT_BRANCH:-dev}
       CONFIG_GIT_USERNAME: ${CONFIG_GIT_USERNAME:-}
       CONFIG_GIT_TOKEN: ${CONFIG_GIT_TOKEN:-}
@@ -97,7 +97,7 @@ services:
       retries: 20
       start_period: 30s
 
-  # ─────────────────────────── DISCOVERY ───────────────────────────
+  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DISCOVERY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   eureka-server:
     build: ./eureka-server
     container_name: kinderland-eureka
@@ -110,7 +110,7 @@ services:
       config-server:
         condition: service_healthy
 
-  # ─────────────────────────── GATEWAY ───────────────────────────
+  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GATEWAY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   api-gateway:
     build: ./api-gateway
     container_name: kinderland-gateway
@@ -130,7 +130,7 @@ services:
       redis:
         condition: service_healthy
 
-  # ─────────────────────────── SERVICES ───────────────────────────
+  # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ SERVICES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   auth-service:
     build: ./auth-service
     container_name: kinderland-auth
@@ -138,12 +138,13 @@ services:
       - "8081:8081"
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_auth_db
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-123456}
       EUREKA_URL: http://eureka-server:8761/eureka/
       # KAFKA_BROKERS = business messaging (Spring Cloud Stream)
-      # KAFKA_BOOTSTRAP_SERVERS = Spring Cloud Bus. Cần CẢ HAI.
+      # KAFKA_BOOTSTRAP_SERVERS = Spring Cloud Bus. Cáº§n Cáº¢ HAI.
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET la bat buoc}
@@ -172,13 +173,14 @@ services:
       - "8082:8082"
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_product_db
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-123456}
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # AwsProperties @Validated @NotBlank -> THIẾU AWS_S3_BUCKET là service KHÔNG khởi động.
+      # AwsProperties @Validated @NotBlank -> THIáº¾U AWS_S3_BUCKET lÃ  service KHÃ”NG khá»Ÿi Ä‘á»™ng.
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:?AWS_S3_BUCKET la bat buoc (product-service fail-fast)}
       AWS_REGION: ${AWS_REGION:-ap-southeast-1}
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY:-}
@@ -200,7 +202,8 @@ services:
       - "8083:8083"
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_order_db
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-123456}
       EUREKA_URL: http://eureka-server:8761/eureka/
@@ -216,7 +219,7 @@ services:
       kafka:
         condition: service_healthy
 
-  # PORT 8085 (đã đổi từ 8084) — khớp config-repository/notification-service.yml
+  # PORT 8085 (Ä‘Ã£ Ä‘á»•i tá»« 8084) â€” khá»›p config-repository/notification-service.yml
   notification-service:
     build: ./notification-service
     container_name: kinderland-notification
@@ -237,10 +240,10 @@ services:
       kafka:
         condition: service_healthy
 
-  # PORT 8084 — khớp `server.port` trong config-repository/payment-service.yml.
-  # CẢNH BÁO: port này đã đổi 2 lần (8085 -> 8086 -> 8084). Comment ở đầu file YAML đó
-  # vẫn ghi 8086 và đang SAI. Đổi port thì phải sửa cả 3 nơi: config-repository,
-  # docker-compose.yml và comment mô tả.
+  # PORT 8084 â€” khá»›p `server.port` trong config-repository/payment-service.yml.
+  # Cáº¢NH BÃO: port nÃ y Ä‘Ã£ Ä‘á»•i 2 láº§n (8085 -> 8086 -> 8084). Comment á»Ÿ Ä‘áº§u file YAML Ä‘Ã³
+  # váº«n ghi 8086 vÃ  Ä‘ang SAI. Äá»•i port thÃ¬ pháº£i sá»­a cáº£ 3 nÆ¡i: config-repository,
+  # docker-compose.yml vÃ  comment mÃ´ táº£.
   payment-service:
     build: ./payment-service
     container_name: kinderland-payment
@@ -248,14 +251,15 @@ services:
       - "8084:8084"
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/kinderland_payment_db
+      DB_HOST: postgres
+      DB_PORT: "5432"
       DB_USERNAME: ${DB_USERNAME:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-123456}
       EUREKA_URL: http://eureka-server:8761/eureka/
       KAFKA_BROKERS: kafka:29092
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      # VnPayProperties @Validated @NotBlank -> THIẾU 2 biến này là service KHÔNG khởi động.
-      # Đây là CHỦ Ý: trước đây secret rỗng thì hệ thống tự đánh SUCCESS mọi giao dịch.
+      # VnPayProperties @Validated @NotBlank -> THIáº¾U 2 biáº¿n nÃ y lÃ  service KHÃ”NG khá»Ÿi Ä‘á»™ng.
+      # ÄÃ¢y lÃ  CHá»¦ Ã: trÆ°á»›c Ä‘Ã¢y secret rá»—ng thÃ¬ há»‡ thá»‘ng tá»± Ä‘Ã¡nh SUCCESS má»i giao dá»‹ch.
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:?VNPAY_TMN_CODE la bat buoc (payment-service fail-fast)}
       VNPAY_SECRET_KEY: ${VNPAY_SECRET_KEY:?VNPAY_SECRET_KEY la bat buoc (payment-service fail-fast)}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
