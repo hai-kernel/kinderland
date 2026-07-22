@@ -3,11 +3,21 @@ server:
   port: 8080
 
 spring:
-  # ----- Redis: đọc token blacklist (auth-service ghi vào khi logout) -----
+  # ----- Redis: token blacklist + rate limiter (RedisRateLimiter) -----
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+
+# Trusted proxy: MẶC ĐỊNH TẮT. Chỉ bật khi Gateway thật sự nằm sau Nginx/LB,
+# vì tin X-Forwarded-For khi Gateway public trực tiếp = client tự giả IP để vượt limit.
+gateway:
+  trusted-proxies:
+    enabled: ${TRUSTED_PROXY_ENABLED:false}
+    addresses: ${TRUSTED_PROXY_ADDRESSES:}
   cloud:
     gateway:
       # LƯU Ý 2025.0.0: cấu hình route nằm dưới 'server.webflux'
@@ -37,6 +47,13 @@ spring:
               predicates:
                 - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
               filters:
+                # Rate limit theo IP cho public read. Redis token bucket.
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@clientIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: ${RATE_LIMIT_PUBLIC_REPLENISH_RATE:60}
+                    redis-rate-limiter.burstCapacity: ${RATE_LIMIT_PUBLIC_BURST_CAPACITY:100}
+                    redis-rate-limiter.requestedTokens: 1
                 - name: CircuitBreaker
                   args:
                     name: productServiceCircuitBreaker
