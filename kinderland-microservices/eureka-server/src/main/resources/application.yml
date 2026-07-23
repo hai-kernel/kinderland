@@ -1,26 +1,22 @@
-server:
-  port: 8761
-
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ cấu hình khởi động sớm.
 spring:
   application:
-    name: eureka-server
+    name: eureka-server   # PHẢI khớp eureka-server.yml trong config repo
 
-eureka:
-  instance:
-    hostname: localhost
-  client:
-    # Bản thân Eureka Server không cần tự đăng ký hay fetch registry
-    register-with-eureka: false
-    fetch-registry: false
-    service-url:
-      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
-  server:
-    # Tắt self-preservation ở môi trường dev để service down được loại bỏ nhanh.
-    # PRODUCTION nên bật lại (xoá dòng dưới hoặc đặt true).
-    enable-self-preservation: false
+  config:
+    import: configserver:${CONFIG_SERVER_URL:http://localhost:8888}
+
+  cloud:
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,busrefresh

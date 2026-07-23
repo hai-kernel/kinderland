@@ -43,7 +43,25 @@ public class Payment {
     /** Mã giao dịch do VNPay trả về (vnp_TransactionNo). */
     private String transactionCode;
 
+    /**
+     * vnp_TxnRef gửi sang VNPay ở lần thử thanh toán hiện tại.
+     * UNIQUE để IPN tra cứu chính xác và chống trùng lặp.
+     *
+     * GIỚI HẠN ĐÃ BIẾT (phương án (a)): mỗi order chỉ có 1 Payment, nên thử lại sau khi FAILED
+     * sẽ GHI ĐÈ txnRef cũ -> lịch sử các lần thử KHÔNG được lưu.
+     * Mô hình nhiều attempt/order được tách thành backlog riêng.
+     */
+    @Column(unique = true)
+    private String txnRef;
+
     private LocalDateTime paidAt;
 
     private LocalDateTime createdAt;
+
+    /**
+     * Optimistic locking: chặn hai IPN chạy song song cùng ghi một Payment.
+     * Luồng thua sẽ ném OptimisticLockingFailureException thay vì ghi đè âm thầm.
+     */
+    @Version
+    private Long version;
 }

@@ -10,6 +10,7 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategoryId(Long categoryId);
+    boolean existsByName(String name);
 
     /** Duyệt/tìm sản phẩm với bộ lọc tuỳ chọn (param null = bỏ qua). Lọc giá theo Product.price (fallback). */
     @Query("SELECT p FROM Product p WHERE p.active = true AND " +

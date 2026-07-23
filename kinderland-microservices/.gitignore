@@ -5,8 +5,8 @@ target/
 .env
 .env.properties
 *.env.local
-# .env.example là FILE MẪU (không chứa secret) -> vẫn commit để chia sẻ cho team
-!.env.example
+# .env là FILE MẪU (không chứa secret) -> vẫn commit để chia sẻ cho team
+!.env
 
 # IDE
 .idea/
@@ -22,3 +22,4 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+.env

@@ -5,4 +5,5 @@ import kinderland.product.model.entity.Category;
 
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     boolean existsByName(String name);
+    java.util.Optional<Category> findByName(String name);
 }

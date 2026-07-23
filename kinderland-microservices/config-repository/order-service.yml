@@ -1,0 +1,53 @@
+# ----- order-service: giỏ hàng + đặt hàng. Port 8083, DB kinderland_order_db. -----
+server:
+  port: 8083
+
+spring:
+  # ----- Database RIÊNG của order-service -----
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/kinderland_order_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:123456}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ----- Kafka: producer (order-created, order-cancelled) + consumer (payment-completed) -----
+  # LƯU Ý: spring.cloud.function.definition đã chuyển về application.yml LOCAL của service
+  # (xem giải thích trong product-service.yml). Đừng khai báo lại ở đây.
+  cloud:
+    stream:
+      bindings:
+        orderCreated-out-0:               # producer: trừ kho (product-service)
+          destination: order-events
+        orderCancelled-out-0:             # producer: hoàn kho khi huỷ (product-service)
+          destination: order-cancelled-events
+        returnReceived-out-0:             # producer: hoàn kho khi nhận hàng trả (product-service)
+          destination: return-received-events
+        paymentCompleted-in-0:            # consumer: set đơn PAID
+          destination: payment-events     # topic do payment-service publish
+          group: order-service
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+# ----- OpenFeign: timeout gọi Product/Payment Service -----
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 3000
+        read-timeout: 5000
+
+# ----- Tự huỷ đơn PENDING quá hạn (khách không thanh toán) + hoàn kho -----
+order:
+  pending-expiry-minutes: 15     # cửa sổ giữ chỗ/retry: đơn PENDING quá 15 phút sẽ bị huỷ + hoàn kho
+  expiry-scan-ms: 60000          # quét mỗi 60 giây
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

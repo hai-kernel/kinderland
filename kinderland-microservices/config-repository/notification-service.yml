@@ -1,0 +1,34 @@
+# ----- notification-service: nghe Kafka notification-events và gửi email. Port 8085, KHÔNG có DB. -----
+server:
+  port: 8085
+
+spring:
+  # ----- Email -----
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASS:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  # ----- Kafka consumer (Spring Cloud Stream functional) -----
+  # LƯU Ý: spring.cloud.function.definition đã chuyển về application.yml LOCAL của service
+  # (xem giải thích trong product-service.yml). Đừng khai báo lại ở đây.
+  cloud:
+    stream:
+      bindings:
+        userRegistered-in-0:
+          destination: notification-events   # = Kafka topic
+          group: notification-service        # consumer group (đảm bảo mỗi event xử lý 1 lần/cụm)
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+management:
+  health:
+    mail:
+      enabled: false

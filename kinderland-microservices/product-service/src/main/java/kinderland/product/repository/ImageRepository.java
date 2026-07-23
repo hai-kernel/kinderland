@@ -9,4 +9,5 @@ import java.util.List;
 public interface ImageRepository extends JpaRepository<Image, Long> {
     /** Lấy tất cả ảnh của một đối tượng (vd toàn bộ ảnh của 1 product). */
     List<Image> findByEntityTypeAndEntityId(EntityType entityType, Long entityId);
+    boolean existsByEntityTypeAndEntityId(EntityType entityType, Long entityId);
 }

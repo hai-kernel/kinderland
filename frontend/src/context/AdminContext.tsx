@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import type { AdminUser } from '../components/admin/AdminLogin';
 
 interface AdminContextType {
@@ -18,7 +18,20 @@ export const useAdmin = () => {
 };
 
 export const AdminProvider = ({ children }: { children: ReactNode }) => {
-  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  // Khôi phục NGAY trong lazy initializer, KHÔNG dùng useEffect.
+  // useEffect chạy SAU lần render đầu -> ở render đầu adminUser = null ->
+  // AdminProtectedRoute thấy null và <Navigate to="/login"/> ngay lập tức,
+  // trước khi state kịp được set. Đó là lý do F5 bị đá về /login.
+  // localStorage là API đồng bộ nên đọc thẳng ở đây được, không cần loading state.
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {
+    try {
+      const stored = localStorage.getItem('adminUser');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      localStorage.removeItem('adminUser');
+      return null;
+    }
+  });
 
   const loginAdmin = (user: AdminUser) => {
     setAdminUser(user);
@@ -30,18 +43,6 @@ export const AdminProvider = ({ children }: { children: ReactNode }) => {
     localStorage.removeItem('adminUser');
     localStorage.removeItem('storeId');
   };
-
-  // Load admin user from localStorage on mount
-  React.useEffect(() => {
-    const stored = localStorage.getItem('adminUser');
-    if (stored) {
-      try {
-        setAdminUser(JSON.parse(stored));
-      } catch (e) {
-        localStorage.removeItem('adminUser');
-      }
-    }
-  }, []);
 
   return (
     <AdminContext.Provider value={{ adminUser, loginAdmin, logoutAdmin }}>

@@ -1,0 +1,60 @@
+server:
+  port: ${CONFIG_SERVER_PORT:8888}
+
+spring:
+  application:
+    name: config-server
+
+  cloud:
+    config:
+      server:
+        git:
+          # Cú pháp ${...} là THAY THẾ PLACEHOLDER, không phải literal.
+          # PHẢI có giá trị mặc định sau dấu ':' — nếu viết ${CONFIG_GIT_URI} trần mà
+          # biến môi trường không tồn tại, Spring ném "Could not resolve placeholder"
+          # và Config Server CHẾT NGAY LÚC START (mọi service mất config theo).
+          uri: ${CONFIG_GIT_URI:https://github.com/hai-kernel/kinderland.git}
+
+          # Config nằm trong monorepo -> phải chỉ đúng thư mục con, nếu không
+          # Config Server tìm ở ROOT repo và trả về 0 property source.
+          search-paths: ${CONFIG_GIT_SEARCH_PATHS:kinderland-microservices/config-repository}
+
+          # QUAN TRỌNG: config-repository CHỈ tồn tại trên branch 'dev'.
+          # Branch 'main' có 0 file config -> để 'main' sẽ ra rỗng.
+          default-label: ${CONFIG_GIT_BRANCH:main}
+
+          # Repo hiện PUBLIC -> không cần credentials (để rỗng = JGit bỏ qua auth).
+          # Chỉ điền khi chuyển repo sang private, và CHỈ qua biến môi trường.
+          # TUYỆT ĐỐI KHÔNG viết token thật vào file này: nó được commit và đóng gói vào JAR.
+          username: ${CONFIG_GIT_USERNAME:}
+          password: ${CONFIG_GIT_TOKEN:}
+          clone-on-start: true
+          # force-pull + refresh-rate 0: mỗi request đều pull mới, tránh phục vụ cache Git cũ
+          force-pull: true
+          refresh-rate: 0
+          delete-untracked-branches: true
+
+    # Bus dùng Kafka binder (KHÔNG dùng AMQP). Cùng broker với business messaging.
+    stream:
+      kafka:
+        binder:
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # busrefresh: phát refresh thủ công toàn Bus. KHÔNG expose busenv/env/configprops.
+        include: health,info,busrefresh
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    # Thấy rõ: nhận webhook /monitor, pull Git, phát RefreshRemoteApplicationEvent
+    org.springframework.cloud.config.monitor: DEBUG
+    org.springframework.cloud.bus: DEBUG

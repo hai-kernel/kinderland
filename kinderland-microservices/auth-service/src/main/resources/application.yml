@@ -1,81 +1,30 @@
-server:
-  port: 8081
-
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ:
+#   - tên service (để Config Server biết trả file nào)
+#   - nguồn cấu hình (.env cho secret + config server)
+#   - toạ độ Kafka cho Spring Cloud Bus (phải có TRƯỚC khi Bus khởi tạo)
 spring:
   application:
-    name: auth-service   # PHẢI khớp tên route lb://AUTH-SERVICE ở Gateway (Eureka tự upper-case)
+    name: auth-service   # PHẢI khớp auth-service.yml trong config repo
+
   config:
-    import: optional:file:.env[.properties]
+    import:
+      # .env: secret (JWT_SECRET, DB_PASSWORD, MAIL_PASS...) - KHÔNG commit
+      - optional:file:.env[.properties]
+      # KHÔNG dùng optional: -> fail ngay nếu Config Server không truy cập được
+      - configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
-  # ----- Database RIÊNG của auth-service -----
-  datasource:
-    url: jdbc:postgresql://localhost:5432/kinderland_auth_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  # ----- Redis: lưu token blacklist (dùng chung với api-gateway) -----
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-  # ----- Email (gửi OTP quên mật khẩu) -----
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASS}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-
-  # ----- Spring Cloud Stream + Kafka (publish UserCreatedEvent) -----
+  # Bus qua Kafka. Để ở local vì Bus khởi tạo rất sớm trong vòng đời context.
   cloud:
     stream:
-      bindings:
-        userCreated-out-0:
-          destination: notification-events   # = Kafka topic
       kafka:
         binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
-# ----- Service discovery -----
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
-
-# ----- JWT (auth-service ký token; Gateway dùng cùng secret để verify) -----
-jwt:
-  secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:3600000}
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
-
-# ----- Google OAuth -----
-google:
-  client-id: ${GOOGLE_CLIENT_ID}
-
-# ----- Swagger -----
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-  api-docs:
-    path: /v3/api-docs
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health,info,busrefresh

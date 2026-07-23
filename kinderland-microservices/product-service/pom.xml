@@ -56,6 +56,18 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
+        <!-- Config client: nạp cấu hình tập trung từ Config Server -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-config</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud Bus qua Kafka: nhận RefreshRemoteApplicationEvent để refresh runtime -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-bus-kafka</artifactId>
+        </dependency>
+
         <!-- Synchronous inter-service call (Product -> Order internal API: kiểm tra khách đã mua SKU cho Review) -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>

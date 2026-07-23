@@ -1,71 +1,30 @@
-server:
-  port: 8082
-
+# Cấu hình chi tiết lấy từ Config Server (Git backend). File local chỉ giữ cấu hình khởi động sớm.
 spring:
   application:
-    name: product-service   # khớp route lb://PRODUCT-SERVICE ở Gateway
+    name: product-service   # PHẢI khớp product-service.yml trong config repo
+
   config:
-    import: optional:file:.env[.properties]
+    import:
+      - optional:file:.env[.properties]
+      - configserver:${CONFIG_SERVER_URL:http://localhost:8888}
 
-  # ----- Cho phép upload ảnh tới 10MB -----
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
-
-  # ----- Database RIÊNG của product-service -----
-  datasource:
-    url: jdbc:postgresql://localhost:5432/kinderland_product_db
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-
-  # ----- Kafka consumer: trừ kho (order-created) + hoàn kho (order-cancelled) -----
   cloud:
+    # QUAN TRỌNG: giữ function.definition ở LOCAL, không đưa vào config repo.
+    # BusEnvironmentPostProcessor đọc property này rất sớm (giai đoạn chuẩn bị Environment)
+    # rồi append 'busConsumer' và ghi đè lại. Nếu giá trị chỉ tồn tại trên Config Server,
+    # EPP sẽ không thấy 3 consumer nghiệp vụ và ghi đè mất chúng.
     function:
-      definition: orderCreated;orderCancelled;returnReceived   # 3 bean Consumer
+      definition: orderCreated;orderCancelled;returnReceived
     stream:
-      bindings:
-        orderCreated-in-0:
-          destination: order-events               # topic do order-service publish khi tạo đơn
-          group: product-service
-        orderCancelled-in-0:
-          destination: order-cancelled-events     # topic do order-service publish khi huỷ đơn
-          group: product-service
-        returnReceived-in-0:
-          destination: return-received-events     # topic do order-service publish khi nhận hàng trả
-          group: product-service
       kafka:
         binder:
-          brokers: ${KAFKA_BROKERS:localhost:9092}
+          brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}
-  instance:
-    prefer-ip-address: true
-
-springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info
-
-# ----- AWS S3 (lưu ảnh sản phẩm). Điền creds vào .env, KHÔNG commit. -----
-aws:
-  access-key: ${AWS_ACCESS_KEY:}
-  secret-key: ${AWS_SECRET_KEY:}
-  region: ${AWS_REGION:ap-southeast-1}
-  s3:
-    bucket: ${AWS_S3_BUCKET:}
+        include: health,info,busrefresh

@@ -1,0 +1,152 @@
+# ----- api-gateway: cổng vào duy nhất, validate JWT tập trung. Port 8080. -----
+server:
+  port: 8080
+
+spring:
+  # ----- Redis: token blacklist + rate limiter (RedisRateLimiter) -----
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+
+  cloud:
+    gateway:
+      # LƯU Ý 2025.0.0: cấu hình route nằm dưới 'server.webflux'
+      # (prefix cũ 'spring.cloud.gateway.routes' đã bị deprecated/đổi tên).
+      server:
+        webflux:
+          # Timeout gọi downstream. Xác minh từ spring-configuration-metadata.json
+          # của spring-cloud-gateway-server-4.3.0: property nằm dưới server.webflux.httpclient.
+          # KHÔNG để vô hạn — request treo sẽ giữ connection và làm cạn pool.
+          httpclient:
+            connect-timeout: ${GATEWAY_CONNECT_TIMEOUT_MS:3000}
+            response-timeout: ${GATEWAY_RESPONSE_TIMEOUT:5s}
+          # Tắt auto-routing theo serviceId; ta khai báo route tường minh bên dưới.
+          discovery:
+            locator:
+              enabled: false
+          routes:
+            # ---------- AUTH SERVICE (8081) ----------
+            - id: auth-service
+              uri: lb://AUTH-SERVICE
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/account/**,/api/v1/address/**,/api/v1/admin/**,/api/v1/welcome
+
+            # ---------- PRODUCT SERVICE (8082) ----------
+            - id: product-service
+              uri: lb://PRODUCT-SERVICE
+              # Ghi de response-timeout RIENG cho route nay (don vi: ms).
+              # Global la 5s (dong 26) - qua ngan cho POST/PUT co upload anh len S3.
+              # Chi noi long dung route product, cac route khac giu 5s.
+              metadata:
+                response-timeout: ${GATEWAY_PRODUCT_RESPONSE_TIMEOUT_MS:30000}
+                connect-timeout: ${GATEWAY_PRODUCT_CONNECT_TIMEOUT_MS:3000}
+              predicates:
+                - Path=/api/v1/products/**,/api/v1/categories/**,/api/v1/brands/**,/api/v1/sku/**,/api/v1/stores/**,/api/v1/inventory/**,/api/v1/images/**,/api/v1/blogs/**,/api/v1/blog-categories/**,/api/v1/reviews/**,/api/v1/promotions/**,/api/v1/wishlist/**,/api/v1/transfer/**
+              filters:
+                # Rate limit theo IP cho public read. Redis token bucket.
+                # JsonRequestRateLimiter (custom): giong RequestRateLimiter nhung tra body JSON
+                # khi bi tu choi. Ban chuan goi setComplete() -> body rong, khong sua duoc.
+                - name: JsonRequestRateLimiter
+                  args:
+                    keyResolver: "#{@clientIpKeyResolver}"
+                    replenishRate: ${RATE_LIMIT_PUBLIC_REPLENISH_RATE:60}
+                    burstCapacity: ${RATE_LIMIT_PUBLIC_BURST_CAPACITY:100}
+                    requestedTokens: 1
+                - name: CircuitBreaker
+                  args:
+                    name: productServiceCircuitBreaker
+                    fallbackUri: forward:/fallback/products
+                    # CHỈ các status này được tính là FAILURE (mở circuit).
+                    # Mọi 4xx nghiệp vụ (400/401/403/404/409/422/429) KHÔNG có ở đây
+                    # nên không làm tăng failure rate — đúng yêu cầu.
+                    statusCodes:
+                      - 500
+                      - 502
+                      - 503
+                      - 504
+
+            # ---------- ORDER SERVICE (8083) ----------
+            - id: order-service
+              uri: lb://ORDER-SERVICE
+              predicates:
+                - Path=/api/v1/orders/**,/api/v1/cart/**,/api/v1/financial/**,/api/v1/loyalty/**,/api/v1/return-requests/**
+
+            # ---------- PAYMENT SERVICE (8086) ----------
+            - id: payment-service
+              uri: lb://PAYMENT-SERVICE
+              predicates:
+                - Path=/api/v1/payment/**
+
+# Secret PHẢI trùng với auth-service (token do auth-service ký, Gateway verify).
+jwt:
+  secret: ${JWT_SECRET}
+
+# ----- Circuit Breaker (Resilience4j 2.2.0, qua spring-cloud-circuitbreaker-reactor 3.3.0) -----
+# MỖI downstream service có instance RIÊNG: product lỗi không được làm mở circuit của order.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: ${CB_SLIDING_WINDOW_SIZE:20}
+        minimumNumberOfCalls: ${CB_MINIMUM_NUMBER_OF_CALLS:10}
+        failureRateThreshold: ${CB_FAILURE_RATE_THRESHOLD:50}
+        slowCallRateThreshold: ${CB_SLOW_CALL_RATE_THRESHOLD:50}
+        slowCallDurationThreshold: ${CB_SLOW_CALL_DURATION:2s}
+        waitDurationInOpenState: ${CB_WAIT_DURATION_OPEN_STATE:10s}
+        permittedNumberOfCallsInHalfOpenState: ${CB_HALF_OPEN_CALLS:3}
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: true
+    instances:
+      productServiceCircuitBreaker:
+        baseConfig: default
+        # product-service co endpoint upload anh len S3 (POST/PUT /api/v1/products).
+        # Upload luon cham hon 2s -> voi slowCallDurationThreshold mac dinh 2s thi moi
+        # lan upload bi tinh la "slow call"; qua 50% la circuit MO va GET cung 503 theo.
+        slowCallDurationThreshold: ${CB_PRODUCT_SLOW_CALL_DURATION:20s}
+
+  # ----- TimeLimiter -----
+  # BAT BUOC khai bao. Spring Cloud CircuitBreaker Resilience4j mac dinh timeout 1 GIAY.
+  # Moi request cham hon 1s -> TimeoutException -> fallbackUri -> 503 /fallback/products,
+  # DU product-service hoan toan khoe manh va circuit dang CLOSED.
+  # Do la ly do GET (nhanh) chay duoc con POST/PUT co upload S3 (cham) luon 503.
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: ${CB_TIMEOUT_DURATION:10s}
+        cancelRunningFuture: true
+    instances:
+      productServiceCircuitBreaker:
+        baseConfig: default
+        # Rieng product: upload S3 can nhieu thoi gian hon.
+        timeoutDuration: ${CB_PRODUCT_TIMEOUT_DURATION:35s}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # circuitbreakers/circuitbreakerevents: quan sát state CLOSED/OPEN/HALF_OPEN
+        include: health,info,gateway,circuitbreakers,circuitbreakerevents,metrics
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    kinderland.gateway: DEBUG
+
+# ----- Trusted proxy cho rate limiter -----
+# MẶC ĐỊNH TẮT. Chỉ bật khi Gateway thật sự nằm sau Nginx/LB.
+# Tin X-Forwarded-For khi Gateway public trực tiếp = client tự giả IP để vượt giới hạn.
+gateway:
+  trusted-proxies:
+    enabled: ${TRUSTED_PROXY_ENABLED:false}
+    addresses: ${TRUSTED_PROXY_ADDRESSES:}

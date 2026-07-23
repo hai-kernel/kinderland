@@ -1,0 +1,90 @@
+# ----- product-service: sản phẩm/danh mục + internal API. Port 8082, DB kinderland_product_db. -----
+server:
+  port: 8082
+
+spring:
+  # ----- Cho phép upload ảnh tới 10MB -----
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # ----- Database RIÊNG của product-service -----
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/kinderland_product_db
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  # ----- Kafka consumer: trừ kho (order-created) + hoàn kho (order-cancelled) -----
+  # LƯU Ý: spring.cloud.function.definition đã chuyển về application.yml LOCAL của service
+  # vì Spring Cloud Bus (BusEnvironmentPostProcessor) đọc nó trước khi property source
+  # của Config Server sẵn sàng. Đừng khai báo lại ở đây.
+  cloud:
+    stream:
+      bindings:
+        orderCreated-in-0:
+          destination: order-events               # topic do order-service publish khi tạo đơn
+          group: product-service
+        orderCancelled-in-0:
+          destination: order-cancelled-events     # topic do order-service publish khi huỷ đơn
+          group: product-service
+        returnReceived-in-0:
+          destination: return-received-events     # topic do order-service publish khi nhận hàng trả
+          group: product-service
+      kafka:
+        binder:
+          brokers: ${KAFKA_BROKERS:localhost:9092}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+# ----- Seed dữ liệu mẫu -----
+# CHỈ chạy khi profile 'dev' đang bật (DataSeedCoordinator có @Profile("dev")).
+# Mọi seeder đều IDEMPOTENT: bỏ qua bản ghi đã tồn tại theo tên, không ghi đè dữ liệu có sẵn.
+app:
+  seed:
+    enabled: true
+
+    category:
+      enabled: true
+
+    brand:
+      enabled: true
+
+    product:
+      enabled: true
+
+    # TẮT: seed ảnh cần S3 hoạt động, hiện AWS credentials chưa hợp lệ
+    # (S3Exception 403 "Access Key Id does not exist"). Bật lại sau khi cấu hình xong AWS.
+    product-image:
+      enabled: false
+
+    # Các seeder khác đã có sẵn trong code, mặc định bật (matchIfMissing = true).
+    # Khai báo tường minh để dễ tắt khi cần.
+    blog:
+      enabled: true
+
+    promotion:
+      enabled: true
+
+    review:
+      enabled: true
+
+# ----- AWS S3 (lưu ảnh sản phẩm). Điền creds vào .env, KHÔNG commit. -----
+aws:
+  # Credentials CÓ THỂ rỗng: môi trường thật có thể dùng IAM role thay vì static key.
+  access-key: ${AWS_ACCESS_KEY:}
+  secret-key: ${AWS_SECRET_KEY:}
+  region: ${AWS_REGION:ap-southeast-1}
+  s3:
+    # KHÔNG để default rỗng: bucket rỗng khiến AWS SDK ném "Bucket cannot be empty"
+    # mãi tới lúc user upload ảnh. AwsProperties (@Validated @NotBlank) chặn ngay lúc startup.
+    bucket: ${AWS_S3_BUCKET}

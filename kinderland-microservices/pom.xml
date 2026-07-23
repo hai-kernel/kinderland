@@ -35,6 +35,8 @@
     </properties>
 
     <modules>
+        <!-- Bước 0: Config Server (cấu hình tập trung, native backend) -->
+        <module>config-server</module>
         <!-- Bước 1: Infrastructure -->
         <module>eureka-server</module>
         <module>api-gateway</module>

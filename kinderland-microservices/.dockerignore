@@ -1,0 +1,41 @@
+# Build context = kinderland-microservices/ (Maven reactor root).
+# Loại thứ không cần cho build -> context nhỏ, build nhanh, không lọt secret vào image.
+
+# Build output (builder stage tự compile lại)
+**/target
+
+# VCS & IDE
+.git
+.gitignore
+.github
+.idea
+.vscode
+**/*.iml
+**/.classpath
+**/.project
+**/.settings
+
+# Secret — KHÔNG BAO GIỜ đưa vào image
+.env
+.env.*
+!.env.example
+**/*.pem
+**/*.key
+
+# Không cần khi build image
+docker-compose*.yml
+Dockerfile
+**/Dockerfile
+.dockerignore
+deployment/
+logs/
+init-db/
+config-repository/
+README*
+**/*.md
+
+# GIỮ LẠI (không được ignore):
+#   pom.xml            <- root reactor
+#   */pom.xml          <- 9 module pom, Maven parse toàn reactor kể cả khi dùng -pl
+#   */src              <- source
+#   .mvn/              <- nếu dùng Maven Wrapper (hiện Dockerfile dùng maven image nên không cần)

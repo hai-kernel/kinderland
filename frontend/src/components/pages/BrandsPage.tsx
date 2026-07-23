@@ -11,7 +11,7 @@ import api from "../../services/api";
 interface Brand {
   id: number;
   name: string;
-  logoUrl: string;
+  origin?: string | null;
 }
 
 interface Product {
@@ -151,15 +151,7 @@ export default function BrandsPage() {
 
             <div className="flex items-center gap-4">
               <div className="h-20 w-20 bg-white rounded-xl flex items-center justify-center p-2">
-                {currentBrand?.logoUrl ? (
-                  <img
-                    src={currentBrand.logoUrl}
-                    alt={currentBrand.name}
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <span className="text-3xl">🎁</span>
-                )}
+                <span className="text-3xl">🎁</span>
               </div>
 
               <div>
@@ -250,22 +242,9 @@ export default function BrandsPage() {
                 className="group"
               >
                 <div className="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all overflow-hidden p-8 text-center border-2 border-gray-100 hover:border-[#AF140B]">
-                  <img
-                    src={brand.logoUrl}
-                    alt={brand.name}
-                    className="h-20 w-20 object-contain mx-auto mb-4"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      img.style.display = 'none';
-                      const parent = img.parentElement;
-                      if (parent && !parent.querySelector('.brand-fallback')) {
-                        const fallback = document.createElement('div');
-                        fallback.className = 'brand-fallback h-20 w-20 mx-auto mb-4 rounded-xl bg-gray-100 flex items-center justify-center text-3xl';
-                        fallback.textContent = '🎁';
-                        parent.insertBefore(fallback, img);
-                      }
-                    }}
-                  />
+                  <div className="brand-fallback h-20 w-20 mx-auto mb-4 rounded-xl bg-gray-100 flex items-center justify-center text-3xl">
+                    🎁
+                  </div>
 
                   <h3 className="font-bold text-gray-800 mb-2 group-hover:text-[#AF140B] transition-colors">
                     {brand.name}
