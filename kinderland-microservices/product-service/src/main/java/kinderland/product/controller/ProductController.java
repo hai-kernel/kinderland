@@ -21,9 +21,16 @@ public class ProductController {
 
     private final ProductService productService;
 
+    /**
+     * Danh sách sản phẩm. Mặc định BỎ QUA hàng đã xoá mềm (active = false).
+     * includeInactive=true: trang admin xem cả hàng đã ẩn để khôi phục.
+     */
     @GetMapping
-    public ResponseEntity<BaseResponse<List<ProductResponse>>> getAll(HttpServletRequest req) {
-        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.getAll()));
+    public ResponseEntity<BaseResponse<List<ProductResponse>>> getAll(
+            @RequestParam(defaultValue = "false") boolean includeInactive,
+            HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK",
+                productService.getAll(includeInactive)));
     }
 
     /** Duyệt sản phẩm có lọc (public) — khớp FE productApi.browse. */
@@ -70,10 +77,21 @@ public class ProductController {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Updated", productService.update(id, request)));
     }
 
+    /**
+     * XOÁ MỀM: ẩn sản phẩm (active = false), không xoá dòng khỏi database.
+     * Giữ nguyên DELETE /{id} để frontend không phải đổi gì.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BaseResponse<Void>> delete(@PathVariable Long id, HttpServletRequest req) {
         productService.delete(id);
-        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Deleted", null));
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã ẩn sản phẩm", null));
+    }
+
+    /** Khôi phục sản phẩm đã ẩn. */
+    @PostMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<BaseResponse<ProductResponse>> restore(@PathVariable Long id, HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã khôi phục", productService.restore(id)));
     }
 }

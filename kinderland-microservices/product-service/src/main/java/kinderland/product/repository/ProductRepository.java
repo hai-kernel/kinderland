@@ -12,6 +12,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategoryId(Long categoryId);
     boolean existsByName(String name);
 
+    /** Chỉ sản phẩm chưa bị xoá mềm (active = true). */
+    List<Product> findByActiveTrue();
+
     /** Duyệt/tìm sản phẩm với bộ lọc tuỳ chọn (param null = bỏ qua). Lọc giá theo Product.price (fallback). */
     @Query("SELECT p FROM Product p WHERE p.active = true AND " +
             "(:keyword IS NULL OR :keyword = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) AND " +

@@ -64,17 +64,48 @@ public class ProductService {
         return toResponse(saved);
     }
 
+    /**
+     * XOÁ MỀM: đặt active = false, KHÔNG xoá dòng khỏi database.
+     *
+     * Xoá cứng bất khả thi ở đây — product bị tham chiếu bởi sku -> inventory/reviews/
+     * transfer_orders, và bởi order_items ở order-service (service khác, không cùng
+     * transaction). Xoá cứng sẽ ném DataIntegrityViolationException (FK) hoặc tệ hơn là
+     * làm đơn hàng cũ mất thông tin sản phẩm đã bán.
+     *
+     * Sau khi ẩn: khách không còn thấy (browse/search đã lọc active = true), nhưng đơn
+     * hàng cũ, tồn kho và đánh giá vẫn tra ngược được. Admin vẫn thấy để khôi phục.
+     */
     @Transactional
     public void delete(Long id) {
-        productRepository.delete(findEntity(id));
+        Product product = findEntity(id);
+        if (!product.isActive()) {
+            return; // đã ẩn rồi -> idempotent, gọi lại không lỗi
+        }
+        product.setActive(false);
+        productRepository.save(product);
+    }
+
+    /** Khôi phục sản phẩm đã ẩn. */
+    @Transactional
+    public ProductResponse restore(Long id) {
+        Product product = findEntity(id);
+        product.setActive(true);
+        return toResponse(productRepository.save(product));
     }
 
     public ProductResponse getById(Long id) {
         return toResponse(findEntity(id));
     }
 
-    public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream().map(this::toResponse).toList();
+    /**
+     * Danh sách cho ADMIN: mặc định chỉ sản phẩm đang hiển thị.
+     * includeInactive = true để xem cả hàng đã ẩn (phục vụ khôi phục).
+     */
+    public List<ProductResponse> getAll(boolean includeInactive) {
+        List<Product> products = includeInactive
+                ? productRepository.findAll()
+                : productRepository.findByActiveTrue();
+        return products.stream().map(this::toResponse).toList();
     }
 
     /** Duyệt sản phẩm có lọc (khớp FE productApi.browse). */
