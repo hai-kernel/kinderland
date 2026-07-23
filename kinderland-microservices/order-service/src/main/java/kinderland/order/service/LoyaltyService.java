@@ -37,6 +37,8 @@ public class LoyaltyService {
         return LoyaltyPointsResponse.builder()
                 .totalPoints(lp.getTotalPoints())
                 .lifetimePoints(lp.getLifetimePoints())
+                // null khi chưa từng tích điểm -> FE không hiển thị dòng hết hạn.
+                .expiresAt(lp.getLastEarnedAt() == null ? null : lp.getLastEarnedAt().plusYears(1))
                 .build();
     }
 
