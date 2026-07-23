@@ -90,7 +90,7 @@ public class OrderController {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Đã huỷ đơn hàng", res));
     }
 
-    /** ADMIN cập nhật trạng thái đơn (FE gửi { orderStatus }). */
+    /** ADMIN / MANAGER cập nhật trạng thái đơn (FE gửi { orderStatus }). */
     @PatchMapping("/{id}")
     public ResponseEntity<BaseResponse<OrderResponse>> updateStatus(@PathVariable Long id,
                                                                     @Valid @RequestBody UpdateOrderStatusRequest request,

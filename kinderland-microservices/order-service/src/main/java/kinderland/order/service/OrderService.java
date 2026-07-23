@@ -197,10 +197,17 @@ public class OrderService {
         return saved;
     }
 
-    /** ADMIN chuyển trạng thái đơn (PAID -> SHIPPING -> COMPLETED...). */
+    /**
+     * ADMIN / MANAGER chuyển trạng thái đơn (PAID -> DELIVERED -> COMPLETED...).
+     *
+     * MANAGER được phép vì nghiệp vụ giao hàng nằm ở cửa hàng: màn hình
+     * "Quản lý đơn hàng" của manager có nút "Giao hàng" gọi đúng endpoint này, nhưng
+     * trước đây chỉ cho ROLE_ADMIN nên manager luôn nhận 403 — nút không bao giờ dùng
+     * được.
+     */
     @Transactional
     public OrderResponse updateStatus(Long id, OrderStatus newStatus, String role) {
-        if (!"ROLE_ADMIN".equals(role)) {
+        if (!"ROLE_ADMIN".equals(role) && !"ROLE_MANAGER".equals(role)) {
             throw new AppException(ErrorCode.UNAUTHORIZED_ACCESS);
         }
         Order order = orderRepository.findById(id)

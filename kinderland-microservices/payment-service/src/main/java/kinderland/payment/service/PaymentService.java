@@ -49,6 +49,14 @@ public class PaymentService {
     @lombok.experimental.NonFinal
     String frontendUrl;
 
+    /**
+     * Cho phép return-url/verify xác nhận thanh toán thay vì chờ IPN. Xem giải thích
+     * đầy đủ ở payment-service.yml. Mặc định false = giữ nguyên hành vi cũ.
+     */
+    @Value("${vnpay.trust-return-url:false}")
+    @lombok.experimental.NonFinal
+    boolean trustReturnUrl;
+
     // =====================================================================
     // 1) KHỞI TẠO THANH TOÁN (order-service gọi qua Feign lúc checkout)
     // =====================================================================
@@ -123,9 +131,64 @@ public class PaymentService {
     // =====================================================================
     // 3) FRONTEND gọi verify (sau khi VNPay redirect) -> trả status string
     // =====================================================================
-    @Transactional(readOnly = true)
+    @Transactional
     public String verifyVnpay(Map<String, String> params) {
+        if (trustReturnUrl) {
+            confirmFromReturnUrl(params);
+        }
         return readVnpayOutcome(params);
+    }
+
+    /**
+     * Chốt thanh toán từ tham số return-url khi vnpay.trust-return-url = true.
+     *
+     * Áp dụng ĐÚNG bộ kiểm tra của IPN — chữ ký HMAC-SHA512, TmnCode đúng merchant,
+     * số tiền khớp, và cả vnp_ResponseCode lẫn vnp_TransactionStatus phải "00" — nên
+     * không thể giả mạo bằng cách sửa URL trên trình duyệt: mọi thay đổi tham số đều
+     * làm sai chữ ký. Khác IPN duy nhất ở chỗ ai là người gọi.
+     *
+     * Im lặng bỏ qua khi không đủ điều kiện: đây là đường phụ, readVnpayOutcome() phía
+     * sau vẫn trả đúng trạng thái đang lưu trong DB.
+     */
+    private void confirmFromReturnUrl(Map<String, String> params) {
+        if (!VNPayUtils.verifySignature(params, vnpSecretKey)) {
+            return;
+        }
+        String callbackTmnCode = params.get("vnp_TmnCode");
+        if (callbackTmnCode == null || !callbackTmnCode.equals(vnPayProperties.getTmnCode())) {
+            return;
+        }
+        if (!"00".equals(params.get("vnp_ResponseCode"))
+                || !"00".equals(params.get("vnp_TransactionStatus"))) {
+            return;
+        }
+
+        Long orderId;
+        try {
+            orderId = parseOrderId(params.get("vnp_TxnRef"));
+        } catch (AppException | NumberFormatException e) {
+            return;
+        }
+
+        Payment payment = paymentRepository.findByOrderId(orderId).orElse(null);
+        // Đã SUCCESS rồi thì thôi — markSuccess() bắn event, gọi lại sẽ tạo event trùng.
+        if (payment == null || payment.getStatus() == PaymentStatus.SUCCESS) {
+            return;
+        }
+
+        // Chống giả mạo số tiền: vnp_Amount = amount * 100.
+        try {
+            long vnpAmount = Long.parseLong(params.get("vnp_Amount"));
+            if (vnpAmount != payment.getAmount().multiply(BigDecimal.valueOf(100)).longValue()) {
+                log.warn("Return-url có số tiền lệch cho orderId={} — bỏ qua.", orderId);
+                return;
+            }
+        } catch (Exception e) {
+            return;
+        }
+
+        log.info("Xác nhận thanh toán orderId={} từ return-url (trust-return-url=true).", orderId);
+        markSuccess(payment, params.get("vnp_TransactionNo"));
     }
 
     /**
