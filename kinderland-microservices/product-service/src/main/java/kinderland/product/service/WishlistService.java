@@ -4,9 +4,11 @@ import kinderland.common.exception.AppException;
 import kinderland.common.exception.ErrorCode;
 import kinderland.product.model.dto.response.WishlistItemResponse;
 import kinderland.product.model.dto.response.WishlistResponse;
+import kinderland.product.model.entity.EntityType;
 import kinderland.product.model.entity.Product;
 import kinderland.product.model.entity.Wishlist;
 import kinderland.product.model.entity.WishlistItem;
+import kinderland.product.repository.ImageRepository;
 import kinderland.product.repository.ProductRepository;
 import kinderland.product.repository.WishlistRepository;
 import lombok.AccessLevel;
@@ -24,6 +26,10 @@ public class WishlistService {
 
     WishlistRepository wishlistRepository;
     ProductRepository productRepository;
+    // Ảnh sản phẩm nằm ở bảng `images` (entityType = PRODUCT), không phải cột trong
+    // `products` — giống hệt cách ProductService.toResponse() lấy ảnh bìa.
+    ImageRepository imageRepository;
+    S3Service s3Service;
 
     public WishlistResponse getMyWishlist(String accountEmail) {
         Wishlist wishlist = wishlistRepository.findByAccountEmail(accountEmail)
@@ -62,7 +68,7 @@ public class WishlistService {
         return toResponse(wishlistRepository.save(wishlist));
     }
 
-    /** Map + enrich tên/giá sản phẩm từ ProductRepository (co-located). */
+    /** Map + enrich tên/giá/ảnh sản phẩm từ ProductRepository (co-located). */
     private WishlistResponse toResponse(Wishlist wishlist) {
         return WishlistResponse.builder()
                 .accountEmail(wishlist.getAccountEmail())
@@ -72,10 +78,19 @@ public class WishlistService {
                             .id(item.getId())
                             .productId(item.getProductId())
                             .productName(p == null ? null : p.getName())
+                            .imageUrl(resolveProductImage(item.getProductId()))
                             .price(p == null ? null : p.getPrice())
                             .addedAt(item.getAddedAt())
                             .build();
                 }).toList())
                 .build();
+    }
+
+    /** Ảnh bìa sản phẩm; null nếu sản phẩm chưa có ảnh -> FE hiển thị placeholder. */
+    private String resolveProductImage(Long productId) {
+        return imageRepository.findByEntityTypeAndEntityId(EntityType.PRODUCT, productId)
+                .stream().findFirst()
+                .map(img -> s3Service.resolveImageUrl(img.getImageUrl()))
+                .orElse(null);
     }
 }
