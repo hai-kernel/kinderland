@@ -39,11 +39,21 @@ public class ProductDataSeeder extends AbstractDataSeeder {
     public void seed() {
         logStart();
 
+        // Tồn kho seed gắn vào cửa hàng đầu tiên. StoreDataSeeder (@Order(25)) chạy
+        // trước seeder này nên bình thường luôn có sẵn cửa hàng Việt Nam thật.
+        // Bản dự phòng bên dưới chỉ còn tác dụng khi ai đó tắt app.seed.store.enabled;
+        // trước đây nó là nguồn gốc của cửa hàng "123 Kinderland" không toạ độ,
+        // khiến trang /stores hiện "null - null" và bản đồ trôi ra khỏi Việt Nam.
         Store store = storeRepository.findAll().stream().findFirst().orElseGet(() ->
                 storeRepository.save(Store.builder()
-                        .name("Kinderland Default Store")
-                        .code("KL-DEF")
-                        .address("123 Kinderland")
+                        .name("Kinderland Nguyễn Huệ")
+                        .code("KL-HCM-01")
+                        .address("72 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP.HCM")
+                        .phone("(+84) 28-7300-8801")
+                        .latitude(10.774020)
+                        .longitude(106.703300)
+                        .openingTime(java.time.LocalTime.of(8, 0))
+                        .closingTime(java.time.LocalTime.of(22, 0))
                         .active(true)
                         .build())
         );

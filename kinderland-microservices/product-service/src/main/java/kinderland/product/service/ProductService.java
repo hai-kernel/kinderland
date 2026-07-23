@@ -133,7 +133,8 @@ public class ProductService {
         if (skuMin != null) {
             response.setMinPrice(skuMin);
         }
-        imageRepository.findByEntityTypeAndEntityId(EntityType.PRODUCT, product.getId())
+        // OrderByIdAsc: phải đọc ĐÚNG dòng mà upsertProductImage ghi vào (xem ImageRepository).
+        imageRepository.findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.PRODUCT, product.getId())
                 .stream().findFirst()
                 .ifPresent(img -> response.setImageUrl(s3Service.resolveImageUrl(img.getImageUrl())));
         return response;
@@ -152,7 +153,9 @@ public class ProductService {
             log.warn("Bỏ qua imageUrl là presigned URL cho product {} — giữ nguyên S3 key hiện có", productId);
             return;
         }
-        List<Image> existing = imageRepository.findByEntityTypeAndEntityId(EntityType.PRODUCT, productId);
+        // OrderByIdAsc: ghi vào ĐÚNG dòng mà toResponse đọc ra. Không có ORDER BY thì hai
+        // bên có thể chọn hai dòng khác nhau -> lưu ảnh mới vào dòng A, hiển thị dòng B.
+        List<Image> existing = imageRepository.findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.PRODUCT, productId);
         if (!existing.isEmpty()) {
             Image img = existing.get(0);
             img.setImageUrl(key);

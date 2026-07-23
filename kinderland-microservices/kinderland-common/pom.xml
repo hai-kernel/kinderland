@@ -45,6 +45,18 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- spring-tx: chứa org.springframework.dao.DataIntegrityViolationException, dùng cho
+             handler lỗi ràng buộc dữ liệu trong GlobalExceptionHandler.
+             scope=provided: KHÔNG ép service nào phải kéo theo. Cả 4 service tiêu thụ
+             kinderland-common (auth/product/order/payment) đều có spring-boot-starter-data-jpa
+             nên spring-tx luôn có sẵn lúc chạy. Nếu sau này có service dùng common mà KHÔNG có
+             JPA, phải thêm spring-tx cho service đó, nếu không handler sẽ lỗi lúc nạp class. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

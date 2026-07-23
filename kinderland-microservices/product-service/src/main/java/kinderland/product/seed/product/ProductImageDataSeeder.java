@@ -44,7 +44,9 @@ public class ProductImageDataSeeder extends AbstractDataSeeder {
                 continue;
             }
 
-            // Create 3 images per product
+            // ĐÚNG 1 ảnh bìa mỗi sản phẩm. Comment cũ ghi "3 images per product" là tàn dư
+            // của phiên bản trước — chính 3 dòng ảnh/sản phẩm đó khiến ProductService lưu
+            // ảnh vào một dòng nhưng hiển thị dòng khác.
             String imageUrl = getProductImage(product.getName());
 
             Image image = Image.builder()

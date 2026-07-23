@@ -40,7 +40,7 @@ public class CategoryService {
     @Transactional
     public void delete(Long id) {
         Category category = findEntity(id);
-        if (productRepository.existsByCategoryIdAndDeletedFalse(id)) {
+        if (productRepository.existsByCategoryId(id)) {
             throw new AppException(ErrorCode.CATEGORY_IN_USE);
         }
         categoryRepository.delete(category);

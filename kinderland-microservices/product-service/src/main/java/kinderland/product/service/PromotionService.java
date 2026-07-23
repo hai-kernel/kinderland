@@ -112,7 +112,7 @@ public class PromotionService {
             minPrice = product.getPrice();
         }
         String imageUrl = imageRepository
-                .findByEntityTypeAndEntityId(EntityType.PRODUCT, product.getId())
+                .findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.PRODUCT, product.getId())
                 .stream().findFirst()
                 .map(img -> s3Service.resolveImageUrl(img.getImageUrl()))
                 .orElse(null);

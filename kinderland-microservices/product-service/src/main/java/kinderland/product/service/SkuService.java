@@ -65,8 +65,9 @@ public class SkuService {
         return toResponse(findEntity(id));
     }
 
+    /** Danh sách SKU công khai — LOẠI SKU của sản phẩm đã xoá mềm (xem SkuRepository). */
     public List<SkuResponse> getAll() {
-        return skuRepository.findAll().stream().map(this::toResponse).toList();
+        return skuRepository.findAllByProductNotDeleted().stream().map(this::toResponse).toList();
     }
 
     public List<SkuResponse> getByProduct(Long productId) {
@@ -76,10 +77,7 @@ public class SkuService {
     /** Internal API cho Order Service: giá SKU + tồn khả dụng tại 1 store. */
     public SkuInternalResponse getInternal(Long skuId, Long storeId) {
         Sku sku = findEntity(skuId);
-        String imageUrl = imageRepository.findByEntityTypeAndEntityId(EntityType.SKU, sku.getId())
-                .stream().findFirst()
-                .map(img -> s3Service.resolveImageUrl(img.getImageUrl()))
-                .orElse(null);
+        String imageUrl = resolveSkuImage(sku);
         return SkuInternalResponse.builder()
                 .skuId(sku.getId())
                 .skuCode(sku.getSkuCode())
@@ -98,11 +96,24 @@ public class SkuService {
         return "SKU" + String.format("%03d", skuRepository.count() + 1);
     }
 
-    private SkuResponse toResponse(Sku sku) {
-        String imageUrl = imageRepository.findByEntityTypeAndEntityId(EntityType.SKU, sku.getId())
+    /**
+     * Ảnh hiển thị cho SKU: ưu tiên ảnh RIÊNG của SKU, không có thì lấy ảnh bìa của product.
+     *
+     * Hầu hết SKU không có ảnh riêng (ảnh gắn ở PRODUCT), nên nếu chỉ tra EntityType.SKU thì
+     * imageUrl luôn null -> giỏ hàng và danh sách SKU không có ảnh nào để hiện.
+     */
+    private String resolveSkuImage(Sku sku) {
+        return imageRepository.findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.SKU, sku.getId())
                 .stream().findFirst()
+                .or(() -> imageRepository
+                        .findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.PRODUCT, sku.getProduct().getId())
+                        .stream().findFirst())
                 .map(img -> s3Service.resolveImageUrl(img.getImageUrl()))
                 .orElse(null);
+    }
+
+    private SkuResponse toResponse(Sku sku) {
+        String imageUrl = resolveSkuImage(sku);
         return SkuResponse.builder()
                 .id(sku.getId())
                 .skuCode(sku.getSkuCode())
