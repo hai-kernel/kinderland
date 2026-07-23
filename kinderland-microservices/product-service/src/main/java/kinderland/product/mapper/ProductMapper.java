@@ -32,17 +32,27 @@ public interface ProductMapper {
     ProductInternalResponse toInternal(Product product);
 
     // category/brand & active do service set; id do DB sinh.
+    // deleted/deletedAt là trạng thái vòng đời do ProductService.delete()/restore() quản lý,
+    // KHÔNG nhận từ client — nếu map từ request, client có thể tự đặt deleted=true/false.
+    // Ignore ở đây giữ @Builder.Default của entity: deleted = false, deletedAt = null.
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "active", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "brand", ignore = true)
     @Mapping(target = "promotion", ignore = true)
     Product toEntity(ProductRequest request);
 
     // IGNORE null: FE cập nhật gửi thiếu field (vd price) sẽ KHÔNG ghi đè null lên giá trị cũ.
+    // Ignore deleted/deletedAt CỰC KỲ QUAN TRỌNG ở đây: đây là cập nhật tại chỗ trên
+    // entity đang tồn tại. Nếu không ignore, mỗi lần admin sửa sản phẩm sẽ ghi đè cờ
+    // xoá mềm -> sản phẩm trong thùng rác tự "sống lại" sau một lần update.
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "active", ignore = true)
+    @Mapping(target = "deleted", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "brand", ignore = true)
     @Mapping(target = "promotion", ignore = true)
