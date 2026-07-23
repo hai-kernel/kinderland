@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * Đơn giản hoá so với monolith: gộp giá & tồn kho trực tiếp lên Product
@@ -38,8 +39,30 @@ public class Product {
     @Column(nullable = false)
     private Integer stockQuantity;
 
+    /**
+     * Trạng thái KINH DOANH: còn bán hay tạm ngừng bán. Do admin bật/tắt chủ động.
+     * KHÁC hoàn toàn {@link #deleted} — một sản phẩm có thể ngừng bán mà chưa bị xoá.
+     */
     @Builder.Default
     private boolean active = true;
+
+    /**
+     * XOÁ MỀM. Sản phẩm bị sku -> inventory/reviews/transfer_orders tham chiếu, và bởi
+     * order_items ở order-service (database KHÁC, không có FK để chặn). Xoá cứng sẽ ném
+     * FK violation, hoặc tệ hơn là làm đơn hàng cũ mất thông tin sản phẩm đã bán.
+     *
+     * Tách riêng khỏi 'active' CÓ CHỦ Ý: nếu dùng chung một cờ thì khôi phục một sản
+     * phẩm vốn đang ngừng bán sẽ vô tình bật nó bán lại.
+     *
+     * columnDefinition có DEFAULT false: ddl-auto=update thêm cột NOT NULL vào bảng
+     * đã có dữ liệu thì PostgreSQL bắt buộc phải có DEFAULT, thiếu là ALTER TABLE fail.
+     */
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean not null default false")
+    private boolean deleted = false;
+
+    /** Thời điểm xoá mềm — phục vụ truy vết. null = chưa từng bị xoá. */
+    private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")

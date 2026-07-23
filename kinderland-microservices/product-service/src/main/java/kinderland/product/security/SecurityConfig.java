@@ -66,6 +66,10 @@ public class SecurityConfig {
                         .requestMatchers("/internal/**").permitAll()
                         // Swagger / OpenAPI docs — always public
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        // Thùng rác PHẢI đứng TRƯỚC rule GET /api/v1/products/** bên dưới:
+                        // Spring Security khớp theo thứ tự, rule đầu tiên trúng là quyết định.
+                        // Đặt sau sẽ khiến /trash rơi vào permitAll -> lộ hàng đã xoá cho khách.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/products/trash").authenticated()
                         // Public read access for storefront browsing
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/products/**",
