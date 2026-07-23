@@ -70,7 +70,7 @@ public class ImageController {
             @RequestParam EntityType entityType,
             @RequestParam Long entityId,
             HttpServletRequest request) {
-        List<ImageResponse> images = imageRepository.findByEntityTypeAndEntityId(entityType, entityId)
+        List<ImageResponse> images = imageRepository.findByEntityTypeAndEntityIdOrderByIdAsc(entityType, entityId)
                 .stream().map(this::toResponse).toList();
         return ResponseEntity.ok(BaseResponse.ok(HttpStatus.OK.value(), request.getRequestURI(), "OK", images));
     }

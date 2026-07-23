@@ -76,7 +76,7 @@ public class SkuService {
     /** Internal API cho Order Service: giá SKU + tồn khả dụng tại 1 store. */
     public SkuInternalResponse getInternal(Long skuId, Long storeId) {
         Sku sku = findEntity(skuId);
-        String imageUrl = imageRepository.findByEntityTypeAndEntityId(EntityType.SKU, sku.getId())
+        String imageUrl = imageRepository.findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.SKU, sku.getId())
                 .stream().findFirst()
                 .map(img -> s3Service.resolveImageUrl(img.getImageUrl()))
                 .orElse(null);
@@ -99,7 +99,7 @@ public class SkuService {
     }
 
     private SkuResponse toResponse(Sku sku) {
-        String imageUrl = imageRepository.findByEntityTypeAndEntityId(EntityType.SKU, sku.getId())
+        String imageUrl = imageRepository.findByEntityTypeAndEntityIdOrderByIdAsc(EntityType.SKU, sku.getId())
                 .stream().findFirst()
                 .map(img -> s3Service.resolveImageUrl(img.getImageUrl()))
                 .orElse(null);
