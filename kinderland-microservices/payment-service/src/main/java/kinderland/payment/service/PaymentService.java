@@ -96,7 +96,7 @@ public class PaymentService {
         String txnRef = payment.getOrderId() + "_" + System.currentTimeMillis();
         payment.setTxnRef(txnRef);
         paymentRepository.save(payment);
-        String ip = (req.getIpAddress() == null || req.getIpAddress().isBlank()) ? "127.0.0.1" : req.getIpAddress();
+        String ip = sanitizeIpv4(req.getIpAddress());
         String url = vnPayGateway.createPaymentUrl(txnRef, payment.getAmount(), ip);
 
         return PaymentInitResponse.builder()
@@ -313,6 +313,38 @@ public class PaymentService {
                 .accountEmail(payment.getAccountEmail())
                 .transactionCode(transactionCode)
                 .build());
+    }
+
+    /**
+     * vnp_IpAddr BẮT BUỘC là IPv4 dạng a.b.c.d.
+     *
+     * order-service lấy IP bằng req.getRemoteAddr(), nhưng nó nằm sau api-gateway trong
+     * mạng Docker nên giá trị nhận được là IP nội bộ container — và tuỳ cấu hình có thể
+     * ra dạng IPv6 ("0:0:0:0:0:0:0:1") hoặc IPv4-mapped ("::ffff:172.18.0.5"). Dấu ':'
+     * bị URLEncoder đổi thành %3A trong chuỗi ký, VNPay coi là tham số không hợp lệ và
+     * trả về trang lỗi chung trước cả khi khách kịp thanh toán.
+     *
+     * Lấy phần IPv4 nếu có (dạng ::ffff:x.x.x.x), còn lại quy về 127.0.0.1 — VNPay chỉ
+     * dùng trường này để ghi nhận, không ảnh hưởng kết quả giao dịch.
+     */
+    static String sanitizeIpv4(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "127.0.0.1";
+        }
+        String value = raw.trim();
+        // X-Forwarded-For có thể là chuỗi "client, proxy1, proxy2" -> lấy phần tử đầu.
+        int comma = value.indexOf(',');
+        if (comma >= 0) {
+            value = value.substring(0, comma).trim();
+        }
+        // IPv4-mapped IPv6: ::ffff:172.18.0.5
+        int lastColon = value.lastIndexOf(':');
+        if (lastColon >= 0) {
+            value = value.substring(lastColon + 1);
+        }
+        return value.matches("^((25[0-5]|2[0-4]\\d|1?\\d?\\d)\\.){3}(25[0-5]|2[0-4]\\d|1?\\d?\\d)$")
+                ? value
+                : "127.0.0.1";
     }
 
     private Long parseOrderId(String txnRef) {
