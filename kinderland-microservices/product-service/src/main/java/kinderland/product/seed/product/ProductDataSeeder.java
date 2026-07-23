@@ -15,7 +15,10 @@ import java.util.List;
 
 @Component
 @Order(30)
-@ConditionalOnProperty(name = "app.seed.product.enabled", havingValue = "true", matchIfMissing = true)
+// KHÔNG dùng matchIfMissing = true: thiếu property phải là KHÔNG seed.
+// Seed ngầm khi restart production là cách dữ liệu demo lọt vào DB thật.
+// Muốn seed phải khai báo tường minh app.seed.product.enabled=true (application-dev.yml đã có).
+@ConditionalOnProperty(name = "app.seed.product.enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class ProductDataSeeder extends AbstractDataSeeder {
 
