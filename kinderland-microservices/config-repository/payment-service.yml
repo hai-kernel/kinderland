@@ -36,6 +36,16 @@ vnpay:
   # Chay local thi dat VNPAY_RETURN_URL trong .env de ghi de.
   return-url: ${VNPAY_RETURN_URL:https://api.kinderland.io.vn/api/v1/payment/vnpay-return}
   frontend-url: ${FRONTEND_URL:https://www.kinderland.io.vn}
+  # Cho phep XAC NHAN THANH TOAN tu return-url/verify thay vi cho IPN.
+  #
+  # MAC DINH false = chi IPN (server-to-server) duoc ghi DB — an toan nhat.
+  # Bat true khi cong merchant KHONG khai bao duoc IPN URL (hay gap o sandbox):
+  # khong co IPN thi payment nam PENDING vinh vien, don bi huy, doanh thu = 0.
+  #
+  # Bat len VAN kiem chu ky HMAC-SHA512 + doi chieu so tien, khong tin suong
+  # tham so tu trinh duyet. Diem yeu duy nhat: phu thuoc khach co quay ve hay
+  # khong — khach tat tab sau khi tra tien thi don van treo PENDING.
+  trust-return-url: ${VNPAY_TRUST_RETURN_URL:false}
 
 springdoc:
   swagger-ui:
