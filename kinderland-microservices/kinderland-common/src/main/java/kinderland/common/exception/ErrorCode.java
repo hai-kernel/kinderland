@@ -61,8 +61,8 @@ public enum ErrorCode {
     CART_EMPTY("Giỏ hàng trống hoặc không có sản phẩm nào được chọn", HttpStatus.BAD_REQUEST),
     IMAGE_NOT_FOUND("Không tìm thấy ảnh", HttpStatus.NOT_FOUND),
     BRAND_NOT_FOUND("Không tìm thấy thương hiệu", HttpStatus.NOT_FOUND),
-    BRAND_IN_USE("Không thể xoá: còn sản phẩm thuộc thương hiệu này", HttpStatus.CONFLICT),
-    CATEGORY_IN_USE("Không thể xoá: còn sản phẩm thuộc danh mục này", HttpStatus.CONFLICT),
+    BRAND_IN_USE("Không thể xoá: còn sản phẩm thuộc thương hiệu này (kể cả sản phẩm trong thùng rác)", HttpStatus.CONFLICT),
+    CATEGORY_IN_USE("Không thể xoá: còn sản phẩm thuộc danh mục này (kể cả sản phẩm trong thùng rác)", HttpStatus.CONFLICT),
     BLOG_CATEGORY_IN_USE("Không thể xoá: còn bài viết thuộc danh mục này", HttpStatus.CONFLICT),
     // Bổ sung cho payment-service
     PAYMENT_NOT_FOUND("Không tìm thấy thông tin thanh toán", HttpStatus.NOT_FOUND),

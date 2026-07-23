@@ -42,6 +42,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     boolean existsByCategoryIdAndDeletedFalse(Long categoryId);
     boolean existsByBrandIdAndDeletedFalse(Long brandId);
 
+    /**
+     * Có BẤT KỲ product nào trỏ tới danh mục/thương hiệu này không — KỂ CẢ hàng đã xoá mềm.
+     *
+     * Dùng để chặn XOÁ CỨNG category/brand. Khoá ngoại products.category_id / brand_id
+     * KHÔNG quan tâm cờ 'deleted' của tầng ứng dụng: sản phẩm nằm trong thùng rác vẫn giữ
+     * FK, nên xoá brand lúc đó vẫn ném "violates foreign key constraint".
+     * Bản ...AndDeletedFalse ở trên CHỈ dùng cho nghiệp vụ hiển thị, KHÔNG dùng làm rào xoá.
+     */
+    boolean existsByCategoryId(Long categoryId);
+    boolean existsByBrandId(Long brandId);
+
     /** Các sản phẩm đang gán promotion (dùng cho promotion detail & khi xoá promotion). */
     List<Product> findByPromotion_PromotionIdAndDeletedFalse(Long promotionId);
 }

@@ -52,7 +52,7 @@ public class BrandService {
     @Transactional
     public void delete(Long id) {
         Brand brand = findEntity(id);
-        if (productRepository.existsByBrandIdAndDeletedFalse(id)) {
+        if (productRepository.existsByBrandId(id)) {
             throw new AppException(ErrorCode.BRAND_IN_USE);
         }
         // images không có FK tới product_brands (quan hệ đa hình) nên database không tự dọn.

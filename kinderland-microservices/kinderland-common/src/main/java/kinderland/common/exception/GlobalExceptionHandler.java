@@ -1,6 +1,8 @@
 package kinderland.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -22,6 +24,7 @@ import java.util.Map;
  * auth-service tự bổ sung handler đó.
  */
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AppException.class)
@@ -35,6 +38,26 @@ public class GlobalExceptionHandler {
         }
         return ResponseEntity.status(errorCode.getStatusCode())
                 .body(BaseResponse.error(status, request.getRequestURI(), msg, null));
+    }
+
+    /**
+     * Vi phạm ràng buộc dữ liệu (khoá ngoại, unique...) — vd xoá brand khi vẫn còn product
+     * trỏ tới nó. Không có handler này thì exception rơi xuống /error, trả 500 trần
+     * {"status":500,"error":"Internal Server Error"} không kèm lý do; API Gateway lại
+     * quy 500 thành 503 "dịch vụ không khả dụng" -> che mất lỗi thật, rất khó lần ra.
+     *
+     * Trả 409 CONFLICT kèm thông báo đọc được. KHÔNG lộ thông điệp gốc của database
+     * (chứa tên bảng/cột) ra client; chỉ ghi vào log để điều tra.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<BaseResponse<Object>> handleDataIntegrityViolation(
+            DataIntegrityViolationException exception, HttpServletRequest request) {
+        log.warn("Vi phạm ràng buộc dữ liệu tại {}: {}", request.getRequestURI(),
+                exception.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(BaseResponse.error(HttpStatus.CONFLICT.value(), request.getRequestURI(),
+                        "Dữ liệu đang được tham chiếu ở nơi khác nên không thể thực hiện thao tác này.",
+                        null));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
