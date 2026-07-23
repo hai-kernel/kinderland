@@ -56,6 +56,11 @@ app:
     category:
       enabled: true
 
+    # Hệ thống cửa hàng tại Việt Nam (có toạ độ + giờ mở cửa thật).
+    # Phải bật trước product: seeder sản phẩm gắn tồn kho vào cửa hàng đầu tiên.
+    store:
+      enabled: true
+
     brand:
       enabled: true
 

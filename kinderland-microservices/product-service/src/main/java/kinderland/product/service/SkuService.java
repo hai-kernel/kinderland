@@ -65,8 +65,9 @@ public class SkuService {
         return toResponse(findEntity(id));
     }
 
+    /** Danh sách SKU công khai — LOẠI SKU của sản phẩm đã xoá mềm (xem SkuRepository). */
     public List<SkuResponse> getAll() {
-        return skuRepository.findAll().stream().map(this::toResponse).toList();
+        return skuRepository.findAllByProductNotDeleted().stream().map(this::toResponse).toList();
     }
 
     public List<SkuResponse> getByProduct(Long productId) {
