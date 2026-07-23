@@ -6,11 +6,15 @@ export interface Brand {
     id: number;
     name: string;
     origin: string | null;
+    /** Presigned URL do backend sinh (hết hạn 60 phút) — CHỈ để hiển thị, không gửi ngược lên. */
+    logoUrl?: string | null;
 }
 
 export interface BrandPayload {
     name: string;
     origin?: string | null;
+    /** S3 key lấy từ imageApi.upload. Bỏ trống = giữ nguyên logo hiện có. */
+    logoUrl?: string;
 }
 
 // ---- API ----

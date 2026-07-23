@@ -70,6 +70,22 @@ export default function AdminBrandManagement() {
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
+    /**
+     * Upload logo lên S3, trả về S3 key để lưu DB.
+     * Không chọn file mới -> trả key RỖNG: backend bỏ qua và giữ nguyên logo cũ.
+     * TUYỆT ĐỐI không trả formData.logoUrl (đó là presigned URL, hết hạn 60 phút).
+     */
+    const uploadLogoIfNeeded = async (brandId: number): Promise<string> => {
+        if (!imageFile) return '';
+        setUploading(true);
+        try {
+            const result = await imageApi.upload(imageFile, 'PRODUCT_BRAND', brandId);
+            return result.key;
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const fetchBrands = async () => {
         setLoading(true);
         try {
@@ -98,7 +114,16 @@ export default function AdminBrandManagement() {
         }
         setSaving(true);
         try {
-            await brandApi.create({ name: formData.name, origin: formData.origin });
+            // Tạo trước để có brandId, vì ảnh cần gắn với entityId.
+            const created = await brandApi.create({ name: formData.name, origin: formData.origin });
+            if (imageFile) {
+                const key = await uploadLogoIfNeeded(created.id);
+                await brandApi.update(created.id, {
+                    name: formData.name,
+                    origin: formData.origin,
+                    logoUrl: key,
+                });
+            }
             toast.success('Thêm thương hiệu thành công!');
             setIsAddDialogOpen(false);
             resetForm();
@@ -118,7 +143,12 @@ export default function AdminBrandManagement() {
         }
         setSaving(true);
         try {
-            await brandApi.update(editingBrand.id, { name: formData.name, origin: formData.origin });
+            const key = await uploadLogoIfNeeded(editingBrand.id);
+            await brandApi.update(editingBrand.id, {
+                name: formData.name,
+                origin: formData.origin,
+                logoUrl: key,   // rỗng = giữ nguyên logo cũ
+            });
             toast.success('Cập nhật thương hiệu thành công!');
             setEditingBrand(null);
             resetForm();
@@ -151,7 +181,9 @@ export default function AdminBrandManagement() {
         setEditingBrand(brand);
         setFormData({ name: brand.name, origin: brand.origin || '' });
         setImageFile(null);
-        setImagePreview('');
+        // Chỉ để xem trước. KHÔNG đưa vào formData.logoUrl: đây là presigned URL,
+        // gửi ngược lên server sẽ ghi đè mất S3 key thật.
+        setImagePreview(brand.logoUrl || '');
     };
 
     return (
@@ -301,7 +333,11 @@ export default function AdminBrandManagement() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="w-10 h-10 bg-gray-50 rounded border border-gray-100 flex items-center justify-center overflow-hidden">
-                                                    <ImageIcon className="w-5 h-5 text-gray-300" />
+                                                    {brand.logoUrl ? (
+                                                        <img src={brand.logoUrl} alt={brand.name} className="w-full h-full object-contain" />
+                                                    ) : (
+                                                        <ImageIcon className="w-5 h-5 text-gray-300" />
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
