@@ -36,7 +36,18 @@ public class OrderItem {
     private String skuCode;
     private String size;
     private String color;
+    @Column(length = 500)
     private String productName;
+
+    /**
+     * TEXT chứ không phải varchar(255) mặc định.
+     *
+     * product-service trả về presigned S3 URL (S3Service.resolveImageUrl) — chuỗi
+     * dài 700–900 ký tự vì mang theo X-Amz-Credential/X-Amz-Signature. Cột 255 ký tự
+     * làm INSERT order_items nổ "value too long for type character varying(255)",
+     * và vì insert nằm trong transaction tạo đơn nên toàn bộ POST /orders/create trả 500.
+     */
+    @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
     @Column(precision = 12, scale = 2)
