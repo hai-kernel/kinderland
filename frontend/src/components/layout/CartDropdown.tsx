@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router';
 import { useApp } from '../../context/AppContext';
-import { Trash2, ShoppingCart, Minus, Plus } from 'lucide-react';
+import { Trash2, ShoppingCart, Minus, Plus, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function CartDropdown() {
@@ -66,7 +66,10 @@ export default function CartDropdown() {
             
             // Alignment: imageUrl from productResponse (preferred), SKU Code from skuResponse
             const name = product.name || item.productName || item.name || "Sản phẩm";
-            const imageUrl = product.imageUrl || item.imageUrl || item.productImageUrl || product.image || item.image || "/placeholder.png";
+            // KHÔNG fallback "/placeholder.png": file đó không tồn tại trong public/ -> 404 ->
+            // trình duyệt hiển thị alt text (tên sản phẩm) thay cho ảnh. Để rỗng rồi
+            // render khối placeholder bằng CSS ở dưới.
+            const imageUrl = product.imageUrl || item.imageUrl || item.productImageUrl || product.image || item.image || "";
             const price = sku.price || item.price || item.unitPrice || product.minPrice || product.price || 0;
             const skuCode = sku.skuCode || item.skuCode || "";
             
@@ -77,11 +80,20 @@ export default function CartDropdown() {
               >
                 {/* Product Image */}
                 <div className="w-20 h-20 flex-shrink-0 bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
-                  <img
-                    src={imageUrl}
-                    alt={name}
-                    className="w-full h-full object-cover"
-                  />
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={name}
+                      className="w-full h-full object-cover"
+                      // Ảnh hỏng (presigned URL hết hạn, key sai...) -> ẩn hẳn thẻ img
+                      // để lộ nền xám, thay vì hiện alt text lem nhem.
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <ImageIcon className="w-6 h-6" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Product Info */}

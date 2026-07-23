@@ -153,7 +153,8 @@ export default function ProductMegaMenu({ onClose }: { onClose: () => void }) {
                 >
                   <div className="bg-gray-50 rounded-lg p-2 mb-2 aspect-square flex items-center justify-center overflow-hidden border border-gray-100">
                     <img
-                      src={product.imageUrl || '/placeholder.png'}
+                      src={product.imageUrl}
+                      onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
                       alt={product.name}
                       className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-300"
                     />

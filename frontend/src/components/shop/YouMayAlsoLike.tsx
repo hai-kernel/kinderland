@@ -208,7 +208,8 @@ export default function YouMayAlsoLike({ currentProductId }: YouMayAlsoLikeProps
                   className="w-full h-[140px] bg-gray-50 flex items-center justify-center p-3 cursor-pointer relative"
                 >
                   <img
-                    src={sku.imageUrl || '/placeholder.png'}
+                    src={sku.imageUrl}
+                    onError={(e) => { e.currentTarget.style.visibility = 'hidden'; }}
                     alt={sku.productName}
                     className="max-w-full max-h-full object-contain transition-transform duration-300 hover:scale-105"
                   />

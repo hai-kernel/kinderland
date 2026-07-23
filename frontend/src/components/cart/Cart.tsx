@@ -8,6 +8,7 @@ import {
   Minus,
   ShoppingBag,
   ArrowLeft,
+  ImageIcon,
 } from "lucide-react";
 
 export default function Cart() {
@@ -189,7 +190,8 @@ export default function Cart() {
               const isSelected = selectedIds.includes(cartItemId);
 
               const name = item.productName || item.name || "Sản phẩm";
-              const imageUrl = item.imageUrl || item.productImageUrl || "/placeholder.png";
+              // KHÔNG fallback "/placeholder.png": file không tồn tại -> 404 -> hiện alt text.
+              const imageUrl = item.imageUrl || item.productImageUrl || "";
               const skuCode = item.skuCode || "";
               const color = item.color || "";
               const size = item.size || "";
@@ -209,11 +211,18 @@ export default function Cart() {
                     />
                   </div>
 
-                  <img
-                    src={imageUrl}
-                    alt={name}
-                    className="w-28 h-28 object-cover rounded-xl border border-gray-100"
-                  />
+                  {imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={name}
+                      className="w-28 h-28 object-cover rounded-xl border border-gray-100"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : (
+                    <div className="w-28 h-28 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center text-gray-300">
+                      <ImageIcon className="w-8 h-8" />
+                    </div>
+                  )}
 
                   <div className="flex-1">
                     <h3 className="font-bold text-[#2C2C2C] mb-1 text-lg">

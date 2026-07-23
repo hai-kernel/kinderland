@@ -77,14 +77,43 @@ export const blogApi = {
 
         const res = await api.get(`/api/v1/blogs/admin?${q}`);
         const raw = res?.data ?? res;
+
+        // Backend GET /api/v1/blogs/admin trả BaseResponse<List<BlogResponse>> — data là
+        // MẢNG THUẦN, KHÔNG phải Page. Code cũ đọc raw.content nên luôn ra [] dù DB có bài,
+        // khiến bảng admin trống trơn và "Tổng bài viết" luôn = 0.
+        // Vẫn giữ nhánh đọc Page phòng khi backend đổi sang phân trang thật.
+        if (Array.isArray(raw)) {
+            const page = params?.page ?? 0;
+            const size = params?.size ?? 20;
+            const keyword = (params?.keyword ?? '').trim().toLowerCase();
+
+            // Backend chưa hỗ trợ keyword/page/size -> lọc và cắt trang ở client.
+            const filtered = keyword
+                ? raw.filter((b: any) =>
+                      String(b.title ?? '').toLowerCase().includes(keyword) ||
+                      String(b.content ?? '').toLowerCase().includes(keyword))
+                : raw;
+
+            const start = page * size;
+            return {
+                content: filtered.slice(start, start + size),
+                totalElements: filtered.length,
+                totalPages: Math.max(1, Math.ceil(filtered.length / size)),
+                size,
+                number: page,
+                first: page === 0,
+                last: start + size >= filtered.length,
+            };
+        }
+
         return {
-            content: raw.content ?? raw.items ?? [],
-            totalElements: raw.totalElements ?? 0,
-            totalPages: raw.totalPages ?? 1,
-            size: raw.size ?? 20,
-            number: raw.number ?? 0,
-            first: raw.first ?? true,
-            last: raw.last ?? true,
+            content: raw?.content ?? raw?.items ?? [],
+            totalElements: raw?.totalElements ?? 0,
+            totalPages: raw?.totalPages ?? 1,
+            size: raw?.size ?? 20,
+            number: raw?.number ?? 0,
+            first: raw?.first ?? true,
+            last: raw?.last ?? true,
         };
     },
 

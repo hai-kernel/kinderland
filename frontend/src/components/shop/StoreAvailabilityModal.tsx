@@ -130,7 +130,8 @@ export default function StoreAvailabilityModal({ isOpen, onClose, product, selec
               {/* Product Info */}
               <div className="bg-gray-50 rounded-xl p-4 flex items-center gap-4">
                 <img
-                  src={product.image || product.imageUrl || "/placeholder.png"}
+                  src={product.image || product.imageUrl}
+                  onError={(e) => { e.currentTarget.style.visibility = "hidden"; }}
                   alt={product.name}
                   className="size-24 object-cover rounded-lg border border-gray-200"
                 />
