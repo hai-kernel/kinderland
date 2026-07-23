@@ -40,9 +40,30 @@ public class Account {
 
     private String password;
 
+    /**
+     * Phương thức đăng nhập gốc của tài khoản.
+     * GOOGLE = tài khoản do loginWithGoogle tạo ra, password chỉ là chuỗi ngẫu
+     * nhiên không ai biết → không được phép đổi mật khẩu / bật 2FA cục bộ.
+     * Cột thêm sau nên hàng cũ có giá trị NULL: coi NULL là LOCAL (xem
+     * {@link #isPasswordLoginEnabled()}).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider")
+    private AuthProvider authProvider;
+
+    /** Tài khoản có mật khẩu cục bộ dùng được hay không. */
+    public boolean isPasswordLoginEnabled() {
+        return authProvider != AuthProvider.GOOGLE;
+    }
+
     public enum Role {
         ADMIN,
         MANAGER,
         CUSTOMER
+    }
+
+    public enum AuthProvider {
+        LOCAL,
+        GOOGLE
     }
 }

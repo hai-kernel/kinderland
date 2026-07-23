@@ -18,6 +18,14 @@ import java.util.List;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface AccountMapper {
 
+    // authProvider là cột thêm sau nên hàng cũ vẫn NULL — trả "LOCAL" để FE không
+    // phải đoán, khớp đúng với Account.isPasswordLoginEnabled().
+    @Mapping(
+            target = "authProvider",
+            expression = "java(account.getAuthProvider() == null "
+                    + "? kinderland.auth.model.entity.Account.AuthProvider.LOCAL.name() "
+                    + ": account.getAuthProvider().name())"
+    )
     UserResponse toUserResponse(Account account);
 
     List<UserResponse> toUserResponseList(List<Account> accounts);

@@ -57,6 +57,13 @@ public class ProfileServiceImpl implements IProfileService {
     public void changePassword(ChangePasswordRequest request) {
         Account account = currentAccount();
 
+        // Tài khoản Google có password là chuỗi ngẫu nhiên nội bộ — không ai biết
+        // oldPassword nên trước đây chỉ trả WRONG_PASSWORD gây hiểu nhầm. Ẩn UI ở
+        // FE là chưa đủ: chặn dứt điểm tại đây bằng lỗi nghiệp vụ rõ ràng.
+        if (!account.isPasswordLoginEnabled()) {
+            throw new AppException(ErrorCode.PASSWORD_LOGIN_NOT_ENABLED);
+        }
+
         if (!passwordEncoder.matches(request.getOldPassword(), account.getPassword())) {
             throw new AppException(ErrorCode.WRONG_PASSWORD);
         }

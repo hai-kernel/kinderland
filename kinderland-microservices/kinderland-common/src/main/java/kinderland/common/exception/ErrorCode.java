@@ -33,6 +33,7 @@ public enum ErrorCode {
     PRODUCT_NOT_FOUND("Product not found", HttpStatus.NOT_FOUND),
     WRONG_PASSWORD("Incorrect current password", HttpStatus.BAD_REQUEST),
     PASSWORD_DUPLICATED("The new password must be different from the old password", HttpStatus.BAD_REQUEST),
+    PASSWORD_LOGIN_NOT_ENABLED("Tài khoản này đăng nhập bằng Google và không có mật khẩu cục bộ.", HttpStatus.BAD_REQUEST),
     PROMOTION_NOT_FOUND("Promotion not found", HttpStatus.NOT_FOUND),
     PROMOTION_CODE_EXISTS("Promotion code already exists", HttpStatus.CONFLICT),
     USERNAME_ALREADY_EXISTED("Username already exists", HttpStatus.CONFLICT),

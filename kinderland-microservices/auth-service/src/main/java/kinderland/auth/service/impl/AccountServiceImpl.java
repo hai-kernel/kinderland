@@ -85,6 +85,7 @@ public class AccountServiceImpl implements AccountService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .role(Account.Role.CUSTOMER)
+                .authProvider(Account.AuthProvider.LOCAL)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();
         accountRepository.save(account);
@@ -238,6 +239,9 @@ public class AccountServiceImpl implements AccountService {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .role(Account.Role.CUSTOMER)
+                // Mật khẩu chỉ là chuỗi ngẫu nhiên không ai biết; đánh dấu GOOGLE
+                // để chặn đổi mật khẩu và ẩn khối bảo mật mật khẩu ở FE.
+                .authProvider(Account.AuthProvider.GOOGLE)
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .build();
 
@@ -334,6 +338,9 @@ public class AccountServiceImpl implements AccountService {
         }
 
         account.setPassword(passwordEncoder.encode(newPassword));
+        // Đặt lại mật khẩu qua OTP email = tài khoản giờ có mật khẩu cục bộ thật
+        // (liên kết cả hai phương thức) nên phải cho phép đổi mật khẩu về sau.
+        account.setAuthProvider(Account.AuthProvider.LOCAL);
         account.setResetOtp(null);
         account.setResetOtpExpiry(null);
 
