@@ -40,7 +40,7 @@ public class BrandService {
     @Transactional
     public void delete(Long id) {
         Brand brand = findEntity(id);
-        if (productRepository.existsByBrandId(id)) {
+        if (productRepository.existsByBrandIdAndDeletedFalse(id)) {
             throw new AppException(ErrorCode.BRAND_IN_USE);
         }
         brandRepository.delete(brand);

@@ -19,8 +19,14 @@ spring:
           # Config Server tìm ở ROOT repo và trả về 0 property source.
           search-paths: ${CONFIG_GIT_SEARCH_PATHS:kinderland-microservices/config-repository}
 
-          # QUAN TRỌNG: config-repository CHỈ tồn tại trên branch 'dev'.
-          # Branch 'main' có 0 file config -> để 'main' sẽ ra rỗng.
+          # Branch chứa config-repository. THỐNG NHẤT 'main' cho cả local lẫn docker
+          # (docker-compose.yml cũng default 'main') -> sửa config một nơi là cả hai
+          # môi trường cùng nhận, không còn cảnh local đọc branch này, EC2 đọc branch kia.
+          #
+          # Branch được trỏ tới PHẢI có thư mục config-repository. Trỏ nhầm sang branch
+          # không có nó -> Config Server trả 0 property source -> mọi service mất
+          # datasource và chết với "Failed to determine a suitable driver class".
+          # Đổi branch thì phải đổi CẢ HAI chỗ (file này + docker-compose.yml).
           default-label: ${CONFIG_GIT_BRANCH:main}
 
           # Repo hiện PUBLIC -> không cần credentials (để rỗng = JGit bỏ qua auth).

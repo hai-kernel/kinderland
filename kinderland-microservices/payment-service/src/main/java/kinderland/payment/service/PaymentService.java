@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @Service
@@ -104,7 +106,18 @@ public class PaymentService {
     public String handleVnpayReturn(HttpServletRequest request) {
         Map<String, String> params = VNPayUtils.getVNPayResponseParams(request);
         String outcome = readVnpayOutcome(params);
-        return frontendUrl + "/payment-result?status=" + outcome;
+
+        // Kèm orderId (vnp_TxnRef) để trang kết quả hiển thị được mã đơn và tra cứu tiếp.
+        // Trước đây chỉ trả ?status= nên mọi tham số VNPay bị mất sau redirect.
+        String orderId = params.getOrDefault("vnp_TxnRef", "");
+
+        StringBuilder url = new StringBuilder(frontendUrl)
+                .append("/payment-result?status=")
+                .append(URLEncoder.encode(outcome, StandardCharsets.UTF_8));
+        if (!orderId.isBlank()) {
+            url.append("&orderId=").append(URLEncoder.encode(orderId, StandardCharsets.UTF_8));
+        }
+        return url.toString();
     }
 
     // =====================================================================

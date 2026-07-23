@@ -85,8 +85,10 @@ services:
       # config-repository lA  THÆ¯ Ma»¤C CON trong monorepo -> baº¯t bua»™c cA³ search-paths,
       # thiaº¿u nA³ Config Server tA¬m a»Y root repo vA  traº£ 0 property source.
       CONFIG_GIT_SEARCH_PATHS: ${CONFIG_GIT_SEARCH_PATHS:-kinderland-microservices/config-repository}
-      # config-repository CHa»ˆ ta»“n taº¡i trAªn branch dev, branch main khA´ng cA³.
-      CONFIG_GIT_BRANCH: ${CONFIG_GIT_BRANCH:-dev}
+      # Branch chua config-repository. THONG NHAT 'main' cho ca local lan docker:
+      # config-server/application.yml cung default 'main' -> sua config o mot noi la ca hai
+      # moi truong deu nhan. Doi branch thi phai doi CA HAI cho.
+      CONFIG_GIT_BRANCH: ${CONFIG_GIT_BRANCH:-main}
       CONFIG_GIT_USERNAME: ${CONFIG_GIT_USERNAME:-}
       CONFIG_GIT_TOKEN: ${CONFIG_GIT_TOKEN:-}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
@@ -342,8 +344,10 @@ services:
       VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:?VNPAY_TMN_CODE la bat buoc (payment-service fail-fast)}
       VNPAY_SECRET_KEY: ${VNPAY_SECRET_KEY:?VNPAY_SECRET_KEY la bat buoc (payment-service fail-fast)}
       VNPAY_URL: ${VNPAY_URL:-https://sandbox.vnpayment.vn/paymentv2/vpcpay.html}
-      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-http://localhost:8080/api/v1/payment/vnpay-return}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      # MAC DINH la PRODUCTION: quen set bien tren EC2 thi VNPay van redirect dung,
+      # thay vi day khach ve localhost. Chay local thi dat 2 bien nay trong .env.
+      VNPAY_RETURN_URL: ${VNPAY_RETURN_URL:-https://api.kinderland.io.vn/api/v1/payment/vnpay-return}
+      FRONTEND_URL: ${FRONTEND_URL:-https://www.kinderland.io.vn}
     depends_on:
       config-server:
         condition: service_healthy

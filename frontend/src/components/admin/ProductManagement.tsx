@@ -181,7 +181,13 @@ export default function ProductManagement() {
 
   /** Upload the selected file to S3, return key (for DB) and url (for display) */
   const uploadImageIfNeeded = async (entityId: number): Promise<{ key: string; url: string }> => {
-    if (!imageFile) return { key: formData.imageUrl, url: formData.imageUrl }; // keep existing
+    // Không chọn ảnh mới -> trả key RỖNG. Backend bỏ qua key rỗng nên ảnh cũ giữ nguyên.
+    //
+    // TUYỆT ĐỐI KHÔNG trả formData.imageUrl làm key: giá trị đó là PRESIGNED URL do API
+    // sinh ra (hết hạn sau 60 phút), không phải S3 key. Gửi lên sẽ bị ghi đè vào cột
+    // images.image_url thay cho key thật; backend thấy chuỗi bắt đầu bằng "http" nên trả
+    // nguyên xi không ký lại -> sau 1 giờ ảnh chết vĩnh viễn.
+    if (!imageFile) return { key: '', url: formData.imageUrl };
     setUploading(true);
     try {
       const result = await imageApi.upload(imageFile, 'PRODUCT', entityId);
@@ -297,6 +303,8 @@ export default function ProductManagement() {
       description: product.description || '',
       ageRange: (product as any).ageRange || '',
       gender: (product as any).gender || '',
+      // CHỈ dùng để hiển thị preview. Đây là presigned URL (hết hạn 60 phút), KHÔNG phải
+      // S3 key — không bao giờ được gửi ngược lên server làm imageUrl (xem uploadImageIfNeeded).
       imageUrl: product.imageUrl || '',
     });
     setImageFile(null);

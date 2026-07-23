@@ -65,7 +65,7 @@ public class PromotionService {
     public void delete(Long id) {
         Promotion promotion = findEntity(id);
         // Gỡ promotion khỏi các sản phẩm đang tham chiếu để không vướng FK.
-        List<Product> products = productRepository.findByPromotion_PromotionId(id);
+        List<Product> products = productRepository.findByPromotion_PromotionIdAndDeletedFalse(id);
         products.forEach(p -> p.setPromotion(null));
         productRepository.saveAll(products);
         promotionRepository.delete(promotion);
@@ -102,7 +102,7 @@ public class PromotionService {
     // ---------- helpers ----------
 
     private List<PromotionProductResponse> buildProductList(Promotion promotion) {
-        return productRepository.findByPromotion_PromotionId(promotion.getPromotionId())
+        return productRepository.findByPromotion_PromotionIdAndDeletedFalse(promotion.getPromotionId())
                 .stream().map(p -> toProductResponse(p, promotion)).toList();
     }
 

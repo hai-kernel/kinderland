@@ -1,0 +1,48 @@
+# =====================================================================================
+# Config CHỈ dùng khi chạy test. File này che application.yml của src/main.
+#
+# Bắt buộc phải có: application.yml thật khai báo
+#   spring.config.import: configserver:...   (KHÔNG optional)
+# nên test sẽ chết ngay lúc khởi động nếu không có Config Server đang chạy.
+# Ở đây khai báo import RỖNG để cắt phụ thuộc đó.
+# =====================================================================================
+spring:
+  application:
+    name: product-service-test
+
+  # Rỗng: không gọi Config Server, không đọc .env
+  config:
+    import: ""
+
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+
+  datasource:
+    url: jdbc:h2:mem:productdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+# AwsProperties có @Validated @NotBlank trên bucket -> thiếu là context không khởi động.
+aws:
+  access-key: test
+  secret-key: test
+  region: ap-southeast-1
+  s3:
+    bucket: test-bucket

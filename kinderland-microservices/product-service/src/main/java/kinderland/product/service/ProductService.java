@@ -2,6 +2,7 @@ package kinderland.product.service;
 
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ProductService {
@@ -64,17 +66,49 @@ public class ProductService {
         return toResponse(saved);
     }
 
+    /**
+     * XOÁ MỀM: đặt deleted = true, KHÔNG xoá dòng khỏi database.
+     *
+     * Xoá cứng bất khả thi — product bị sku -> inventory/reviews/transfer_orders tham
+     * chiếu, và bởi order_items ở order-service (database KHÁC, không có FK để chặn).
+     * Xoá cứng ném "violates foreign key constraint on table sku", hoặc tệ hơn là làm
+     * đơn hàng cũ mất thông tin sản phẩm đã bán.
+     *
+     * KHÔNG đụng tới 'active': đó là trạng thái kinh doanh do admin đặt, khôi phục phải
+     * trả sản phẩm về đúng trạng thái bán/ngừng bán trước khi xoá.
+     */
     @Transactional
     public void delete(Long id) {
-        productRepository.delete(findEntity(id));
+        Product product = findEntity(id);
+        if (product.isDeleted()) {
+            return; // đã ở thùng rác -> idempotent, gọi lại không lỗi
+        }
+        product.setDeleted(true);
+        product.setDeletedAt(LocalDateTime.now());
+        productRepository.save(product);
+    }
+
+    /** Khôi phục sản phẩm từ thùng rác. Giữ nguyên 'active' như trước khi xoá. */
+    @Transactional
+    public ProductResponse restore(Long id) {
+        Product product = findEntity(id);
+        product.setDeleted(false);
+        product.setDeletedAt(null);
+        return toResponse(productRepository.save(product));
+    }
+
+    /** Thùng rác: chỉ sản phẩm đã xoá mềm. Dành cho ADMIN. */
+    public List<ProductResponse> getTrash() {
+        return productRepository.findByDeletedTrue().stream().map(this::toResponse).toList();
     }
 
     public ProductResponse getById(Long id) {
         return toResponse(findEntity(id));
     }
 
+    /** Danh sách sản phẩm — luôn LOẠI hàng đã xoá mềm. */
     public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream().map(this::toResponse).toList();
+        return productRepository.findByDeletedFalse().stream().map(this::toResponse).toList();
     }
 
     /** Duyệt sản phẩm có lọc (khớp FE productApi.browse). */
@@ -110,6 +144,14 @@ public class ProductService {
         if (key == null || key.isBlank()) {
             return;
         }
+        // CHẶN ghi đè bằng presigned URL. API trả imageUrl dạng presigned (hết hạn 60 phút);
+        // client vô tình gửi lại giá trị đó khi sửa sản phẩm mà không đổi ảnh. Lưu nó vào DB
+        // thay cho S3 key -> resolveImageUrl thấy "http" nên trả nguyên xi, không ký lại
+        // -> ảnh chết sau 1 giờ. Bỏ qua để giữ nguyên key thật đang có.
+        if (isPresignedUrl(key)) {
+            log.warn("Bỏ qua imageUrl là presigned URL cho product {} — giữ nguyên S3 key hiện có", productId);
+            return;
+        }
         List<Image> existing = imageRepository.findByEntityTypeAndEntityId(EntityType.PRODUCT, productId);
         if (!existing.isEmpty()) {
             Image img = existing.get(0);
@@ -123,6 +165,19 @@ public class ProductService {
                     .createdAt(LocalDateTime.now())
                     .build());
         }
+    }
+
+    /**
+     * Nhận diện presigned URL của S3 (có tham số ký X-Amz-Signature / X-Amz-Credential).
+     *
+     * KHÔNG chặn mọi chuỗi "http": ảnh seed dùng URL public thật (images.unsplash.com)
+     * và resolveImageUrl có chủ ý cho phép URL đầy đủ đi qua. Chỉ chặn đúng loại URL
+     * có hạn dùng — thứ không được phép lưu vào database.
+     */
+    private boolean isPresignedUrl(String value) {
+        String lower = value.toLowerCase();
+        return lower.startsWith("http")
+                && (lower.contains("x-amz-signature") || lower.contains("x-amz-credential"));
     }
 
     /** FE (mô hình SKU) không gửi price/stock -> mặc định 0 để không vi phạm cột NOT NULL. */

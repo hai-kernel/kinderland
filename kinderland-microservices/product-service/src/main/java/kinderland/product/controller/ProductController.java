@@ -21,9 +21,22 @@ public class ProductController {
 
     private final ProductService productService;
 
+    /** Danh sách sản phẩm — luôn LOẠI hàng đã xoá mềm. */
     @GetMapping
     public ResponseEntity<BaseResponse<List<ProductResponse>>> getAll(HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.getAll()));
+    }
+
+    /**
+     * Thùng rác: sản phẩm đã xoá mềm. CHỈ ADMIN.
+     *
+     * Đặt TRƯỚC @GetMapping("/{id}") — Spring ưu tiên path literal hơn path variable nên
+     * "trash" không bị nuốt thành id, nhưng giữ đúng thứ tự cho người đọc.
+     */
+    @GetMapping("/trash")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<BaseResponse<List<ProductResponse>>> trash(HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK", productService.getTrash()));
     }
 
     /** Duyệt sản phẩm có lọc (public) — khớp FE productApi.browse. */
@@ -70,10 +83,21 @@ public class ProductController {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Updated", productService.update(id, request)));
     }
 
+    /**
+     * XOÁ MỀM: đánh dấu deleted = true, KHÔNG xoá dòng khỏi database.
+     * Giữ nguyên đường dẫn + method để frontend không phải đổi gì.
+     */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
     public ResponseEntity<BaseResponse<Void>> delete(@PathVariable Long id, HttpServletRequest req) {
         productService.delete(id);
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Deleted", null));
+    }
+
+    /** Khôi phục sản phẩm từ thùng rác. CHỈ ADMIN. */
+    @PutMapping("/{id}/restore")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<BaseResponse<ProductResponse>> restore(@PathVariable Long id, HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "Restored", productService.restore(id)));
     }
 }
