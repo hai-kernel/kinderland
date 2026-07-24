@@ -93,6 +93,10 @@ public class CartService {
         });
     }
 
+    private BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
     private Cart requireCart(String accountEmail) {
         return cartRepository.findByAccountEmail(accountEmail)
                 .orElseThrow(() -> new AppException(ErrorCode.CART_ITEM_NOT_FOUND));
@@ -115,18 +119,24 @@ public class CartService {
                 .quantity(item.getQuantity());
         try {
             SkuInternalResponse sku = productClient.getSku(item.getSkuId(), item.getStoreId());
-            BigDecimal price = sku.getPrice() == null ? BigDecimal.ZERO : sku.getPrice();
-            BigDecimal lineTotal = price.multiply(BigDecimal.valueOf(item.getQuantity()));
+            // price = giá SAU khuyến mãi (product-service đã áp); originalPrice = giá gốc.
+            BigDecimal finalPrice = nz(sku.getPrice());
+            BigDecimal originalPrice = sku.getOriginalPrice() == null ? finalPrice : sku.getOriginalPrice();
+            BigDecimal qty = BigDecimal.valueOf(item.getQuantity());
+            BigDecimal lineTotal = finalPrice.multiply(qty);
+            BigDecimal lineDiscount = originalPrice.subtract(finalPrice).max(BigDecimal.ZERO).multiply(qty);
+
             b.skuCode(sku.getSkuCode())
                     .productName(sku.getProductName())
                     .imageUrl(sku.getImageUrl())
-                    .price(price)
+                    // price/finalPrice/totalPrice = số SAU giảm (giỏ cộng tiền theo đây).
+                    .price(finalPrice)
                     .lineTotal(lineTotal)
-                    // alias cho FE
-                    .unitPrice(price)
-                    .finalPrice(price)
+                    .finalPrice(finalPrice)
                     .totalPrice(lineTotal)
-                    .discountAmount(BigDecimal.ZERO);
+                    // unitPrice = giá gốc để FE gạch ngang; discountAmount = tiền giảm CẢ DÒNG.
+                    .unitPrice(originalPrice)
+                    .discountAmount(lineDiscount);
         } catch (FeignException e) {
             log.warn("Không lấy được thông tin SKU {} khi hiển thị giỏ: {}", item.getSkuId(), e.getMessage());
         }

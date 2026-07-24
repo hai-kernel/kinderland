@@ -89,8 +89,12 @@ public class OrderService {
             if (sku.getAvailableQuantity() == null || sku.getAvailableQuantity() < line.getQuantity()) {
                 throw new AppException(ErrorCode.OUT_OF_STOCK);
             }
+            // sku.getPrice() = giá SAU khuyến mãi do product-service chốt (KHÔNG nhận giá từ FE).
             BigDecimal unitPrice = sku.getPrice() == null ? BigDecimal.ZERO : sku.getPrice();
-            BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()));
+            BigDecimal originalUnitPrice = sku.getOriginalPrice() == null ? unitPrice : sku.getOriginalPrice();
+            BigDecimal qty = BigDecimal.valueOf(line.getQuantity());
+            BigDecimal lineTotal = unitPrice.multiply(qty);
+            BigDecimal lineDiscount = originalUnitPrice.subtract(unitPrice).max(BigDecimal.ZERO).multiply(qty);
             subtotal = subtotal.add(lineTotal);
 
             items.add(OrderItem.builder()
@@ -103,6 +107,9 @@ public class OrderService {
                     .productName(sku.getProductName())
                     .imageUrl(sku.getImageUrl())
                     .unitPrice(unitPrice)
+                    .originalUnitPrice(originalUnitPrice)
+                    .productDiscountAmount(lineDiscount)
+                    .promotionId(sku.getPromotionId())
                     .quantity(line.getQuantity())
                     .lineTotal(lineTotal)
                     .build());

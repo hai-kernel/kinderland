@@ -11,7 +11,15 @@ public class SkuInternalResponse {
     private String skuCode;
     private String size;
     private String color;
+    /** GIÁ SAU KHUYẾN MÃI (product-service đã áp promotion). Order/cart chốt tiền theo field này. */
     private BigDecimal price;
+    /** Giá gốc trước khuyến mãi. */
+    private BigDecimal originalPrice;
+    /** Tiền giảm trên MỘT đơn vị. */
+    private BigDecimal discountAmount;
+    private BigDecimal discountPercent;
+    private Long promotionId;
+    private String promotionTitle;
     private Long productId;
     private String productName;
     private String imageUrl;

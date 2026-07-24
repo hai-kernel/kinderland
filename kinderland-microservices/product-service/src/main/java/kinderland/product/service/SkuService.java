@@ -7,7 +7,9 @@ import kinderland.product.model.dto.request.SkuRequest;
 import kinderland.product.model.dto.response.SkuResponse;
 import kinderland.product.model.entity.EntityType;
 import kinderland.product.model.entity.Product;
+import kinderland.product.model.entity.Promotion;
 import kinderland.product.model.entity.Sku;
+import kinderland.product.pricing.ProductPricing;
 import kinderland.product.repository.ImageRepository;
 import kinderland.product.repository.ProductRepository;
 import kinderland.product.repository.SkuRepository;
@@ -17,6 +19,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -74,18 +77,40 @@ public class SkuService {
         return skuRepository.findByProductId(productId).stream().map(this::toResponse).toList();
     }
 
-    /** Internal API cho Order Service: giá SKU + tồn khả dụng tại 1 store. */
+    /**
+     * Internal API cho Order Service: giá SKU + tồn khả dụng tại 1 store.
+     *
+     * ÁP KHUYẾN MÃI CẤP SẢN PHẨM TẠI ĐÂY: order-service và cart-service đều chốt tiền theo
+     * `price` trả về, nên đây là chỗ duy nhất cần áp promotion để giảm giá chảy xuyên suốt
+     * giỏ → checkout → đơn → thanh toán. `originalPrice` giữ giá gốc để hiển thị gạch ngang.
+     *
+     * readOnly = true để session mở suốt lời gọi: cần đọc LAZY sku.product.promotion để tính giá.
+     */
+    @Transactional(readOnly = true)
     public SkuInternalResponse getInternal(Long skuId, Long storeId) {
         Sku sku = findEntity(skuId);
+        Product product = sku.getProduct();
+        Promotion promotion = product.getPromotion();
+
+        BigDecimal originalPrice = sku.getPrice() == null ? BigDecimal.ZERO : sku.getPrice();
+        BigDecimal unitDiscount = ProductPricing.discountAmount(originalPrice, promotion);
+        BigDecimal effectivePrice = originalPrice.subtract(unitDiscount).max(BigDecimal.ZERO);
+        boolean promoApplied = unitDiscount.signum() > 0;
+
         String imageUrl = resolveSkuImage(sku);
         return SkuInternalResponse.builder()
                 .skuId(sku.getId())
                 .skuCode(sku.getSkuCode())
                 .size(sku.getSize())
                 .color(sku.getColor())
-                .price(sku.getPrice())
-                .productId(sku.getProduct().getId())
-                .productName(sku.getProduct().getName())
+                .price(effectivePrice)
+                .originalPrice(originalPrice)
+                .discountAmount(unitDiscount)
+                .discountPercent(promoApplied ? promotion.getDiscountPercent() : null)
+                .promotionId(promoApplied ? promotion.getPromotionId() : null)
+                .promotionTitle(promoApplied ? promotion.getTitle() : null)
+                .productId(product.getId())
+                .productName(product.getName())
                 .imageUrl(imageUrl)
                 .availableQuantity(inventoryService.getAvailableQuantity(skuId, storeId))
                 .build();

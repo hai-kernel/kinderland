@@ -20,6 +20,10 @@ public class OrderItemResponse {
     private String productName;
     private String imageUrl;
     private BigDecimal unitPrice;
+    /** Giá gốc trước khuyến mãi + tiền giảm cả dòng (0 nếu sản phẩm không có khuyến mãi). */
+    private BigDecimal originalUnitPrice;
+    private BigDecimal productDiscountAmount;
+    private Long promotionId;
     private Integer quantity;
     private BigDecimal lineTotal;
     private BigDecimal totalPrice;

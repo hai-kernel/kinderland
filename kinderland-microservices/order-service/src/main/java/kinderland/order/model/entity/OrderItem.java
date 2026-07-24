@@ -50,8 +50,20 @@ public class OrderItem {
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
 
+    /** Đơn giá THỰC TRẢ (đã áp khuyến mãi cấp sản phẩm). lineTotal = unitPrice * quantity. */
     @Column(precision = 12, scale = 2)
     private BigDecimal unitPrice;
+
+    /** Snapshot giá gốc trước khuyến mãi + tiền giảm CẢ DÒNG, để hiển thị & đối soát về sau. */
+    @Column(precision = 12, scale = 2)
+    private BigDecimal originalUnitPrice;
+
+    @Builder.Default
+    @Column(precision = 12, scale = 2)
+    private BigDecimal productDiscountAmount = BigDecimal.ZERO;
+
+    /** Snapshot promotion đã áp cho dòng này (null nếu không có). */
+    private Long promotionId;
 
     private Integer quantity;
 
