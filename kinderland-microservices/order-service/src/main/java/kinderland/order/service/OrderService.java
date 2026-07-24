@@ -113,7 +113,17 @@ public class OrderService {
                     .quantity(line.getQuantity())
                     .lineTotal(lineTotal)
                     .build());
+
+            // [PROMOTION DEBUG] Số THỰC TẾ được lưu vào order_items — đây là dòng cuối cùng
+            // trong chuỗi. Nếu log này đúng (unitPrice < originalUnitPrice) mà Payment amount
+            // vẫn sai, lỗi nằm ở initiatePayment/payment-service; nếu log này đã sai thì lỗi
+            // nằm ở fetchSku()/Feign call phía trên (product-service trả sai, hoặc gọi nhầm
+            // instance product-service chưa deploy code mới do load-balancing nhiều instance).
+            log.info("[PROMOTION DEBUG] order-item skuId={} promotionId={} original={} " +
+                            "discount(line)={} final(unit)={} lineTotal={}",
+                    sku.getSkuId(), sku.getPromotionId(), originalUnitPrice, lineDiscount, unitPrice, lineTotal);
         }
+        log.info("[PROMOTION DEBUG] order subtotal={}", subtotal);
 
         // Phí ship + giảm giá đều tính TẠI ĐÂY từ giá SKU do product-service trả về.
         // Client chỉ gửi {skuId, quantity, promotionCode} — mọi con số tiền đều do server chốt,

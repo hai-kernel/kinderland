@@ -35,6 +35,11 @@ public class CartService {
 
     @Transactional
     public CartResponse addToCart(String accountEmail, AddToCartRequest request) {
+        // [PROMOTION DEBUG] Payload FE gửi lên — PHẢI chỉ có skuId/storeId/quantity, không có
+        // bất kỳ field giá nào. Nếu request thực tế mang thêm field giá, tra AddToCartRequest.
+        log.info("[PROMOTION DEBUG] add-cart request accountEmail={} skuId={} storeId={} quantity={}",
+                accountEmail, request.getSkuId(), request.getStoreId(), request.getQuantity());
+
         Cart cart = cartRepository.findByAccountEmail(accountEmail)
                 .orElseGet(() -> cartRepository.save(Cart.builder().accountEmail(accountEmail).build()));
 
@@ -137,6 +142,14 @@ public class CartService {
                     // unitPrice = giá gốc để FE gạch ngang; discountAmount = tiền giảm CẢ DÒNG.
                     .unitPrice(originalPrice)
                     .discountAmount(lineDiscount);
+
+            // [PROMOTION DEBUG] Giá trị THỰC SỰ nằm trong CartResponse trả về FE. So log này
+            // với response JSON của GET /api/v1/cart trong Network tab — nếu KHÁC NHAU thì
+            // lỗi nằm ở gateway/serialization; nếu GIỐNG NHAU mà FE vẫn hiện 149.000 thì lỗi
+            // chắc chắn nằm ở FE (đọc nhầm field) hoặc bundle FE đang chạy là bản build cũ.
+            log.info("[PROMOTION DEBUG] cart-item cartItemId={} skuId={} price(final)={} " +
+                            "unitPrice(original)={} discountAmount(line)={} lineTotal={}",
+                    item.getId(), item.getSkuId(), finalPrice, originalPrice, lineDiscount, lineTotal);
         } catch (FeignException e) {
             log.warn("Không lấy được thông tin SKU {} khi hiển thị giỏ: {}", item.getSkuId(), e.getMessage());
         }

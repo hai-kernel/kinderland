@@ -16,6 +16,7 @@ import kinderland.product.repository.SkuRepository;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
+@Slf4j
 public class SkuService {
 
     SkuRepository skuRepository;
@@ -98,6 +100,21 @@ public class SkuService {
         boolean promoApplied = unitDiscount.signum() > 0;
 
         String imageUrl = resolveSkuImage(sku);
+
+        // [PROMOTION DEBUG] Đây là ĐIỂM CHỐT GIÁ DUY NHẤT mà cart-service và order-service
+        // (order-service) đều gọi qua Feign. Nếu log này cho số ĐÚNG (effective < original)
+        // mà cart/order vẫn hiển thị giá gốc, nghĩa là lỗi nằm ở SAU điểm này (Feign call,
+        // cart mapper, hoặc image production-service đang chạy CHƯA có đoạn code này).
+        // Nếu log này CHÍNH NÓ đã sai (effective == original dù promotion còn hiệu lực),
+        // lỗi nằm ở TRƯỚC/TẠI đây (ProductPricing hoặc dữ liệu promotion/product).
+        log.info("[PROMOTION DEBUG] pricing skuId={} productId={} original={} promotionId={} " +
+                        "promotionActive={} discountPercent={} discount={} effective={}",
+                skuId, product.getId(), originalPrice,
+                promotion != null ? promotion.getPromotionId() : null,
+                ProductPricing.isActive(promotion),
+                promotion != null ? promotion.getDiscountPercent() : null,
+                unitDiscount, effectivePrice);
+
         return SkuInternalResponse.builder()
                 .skuId(sku.getId())
                 .skuCode(sku.getSkuCode())
