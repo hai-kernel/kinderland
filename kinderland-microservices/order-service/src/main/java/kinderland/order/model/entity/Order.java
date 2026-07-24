@@ -34,6 +34,40 @@ public class Order {
     @Builder.Default
     private List<OrderItem> items = new ArrayList<>();
 
+    /** Tổng tiền hàng TRƯỚC mọi khoản giảm và phí ship (= tổng lineTotal). */
+    @Builder.Default
+    @Column(precision = 12, scale = 2)
+    private BigDecimal subtotal = BigDecimal.ZERO;
+
+    /** Phí vận chuyển do BACKEND tính theo subtotal (không nhận từ client). */
+    @Builder.Default
+    @Column(precision = 12, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+
+    /** Số tiền giảm từ mã khuyến mãi (KHÔNG bao gồm giảm bằng điểm — xem pointsDiscount). */
+    @Builder.Default
+    @Column(precision = 12, scale = 2)
+    private BigDecimal discountAmount = BigDecimal.ZERO;
+
+    /** Mã khuyến mãi đã áp: giữ cả id (đối chiếu) lẫn code (snapshot, mã có thể bị đổi/xoá sau). */
+    private Long promotionId;
+
+    @Column(length = 50)
+    private String promotionCode;
+
+    /**
+     * Đã ghi nhận lượt dùng mã cho đơn này chưa. Guard để PaymentCompletedEvent bị gửi lại
+     * (Kafka at-least-once) không đốt thêm lượt của voucher.
+     */
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean promotionRedeemed = false;
+
+    /**
+     * SỐ TIỀN THỰC PHẢI TRẢ = subtotal + shippingFee - discountAmount - pointsDiscount.
+     * Đây là con số gửi sang payment-service và dùng để tích điểm; giữ tên cũ totalAmount
+     * để không phá payment/financial/loyalty đang đọc field này.
+     */
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal totalAmount;
 

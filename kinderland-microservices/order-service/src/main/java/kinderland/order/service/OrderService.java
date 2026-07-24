@@ -13,7 +13,9 @@ import kinderland.order.client.ProductClient;
 import kinderland.order.client.PaymentClient;
 import kinderland.order.client.dto.SkuInternalResponse;
 import kinderland.order.client.dto.InitiatePaymentRequest;
+import kinderland.order.client.PromotionClient;
 import kinderland.order.client.dto.PaymentInitResponse;
+import kinderland.order.client.dto.PromotionValidationResponse;
 import kinderland.order.event.OrderCreatedEvent;
 import kinderland.order.event.OrderCancelledEvent;
 import kinderland.order.event.OrderEventPublisher;
@@ -40,6 +42,7 @@ public class OrderService {
 
     OrderRepository orderRepository;
     ProductClient productClient;
+    PromotionClient promotionClient;
     PaymentClient paymentClient;
     OrderEventPublisher orderEventPublisher;
     OrderMapper orderMapper;
@@ -50,12 +53,22 @@ public class OrderService {
     @lombok.experimental.NonFinal
     int pendingExpiryMinutes;
 
+    /** Ngưỡng miễn phí ship + phí ship mặc định (VND). Khớp quy tắc FE đang hiển thị. */
+    @org.springframework.beans.factory.annotation.Value("${order.free-shipping-threshold:500000}")
+    @lombok.experimental.NonFinal
+    BigDecimal freeShippingThreshold;
+
+    @org.springframework.beans.factory.annotation.Value("${order.shipping-fee:30000}")
+    @lombok.experimental.NonFinal
+    BigDecimal shippingFee;
+
     /**
      * Tạo đơn theo mô hình SKU + Store (khớp FE): mỗi dòng = {skuId, quantity}, cả đơn giao tại 1 store
      * tới 1 địa chỉ. Với mỗi dòng: Feign lấy giá SKU + kiểm tồn TẠI store, chốt snapshot.
      */
     @Transactional
-    public OrderResponse createOrder(String accountEmail, Long addressId, Long storeId, List<OrderLineRequest> lines) {
+    public OrderResponse createOrder(String accountEmail, Long addressId, Long storeId,
+                                     List<OrderLineRequest> lines, String promotionCode) {
         if (lines == null || lines.isEmpty()) {
             throw new AppException(ErrorCode.CART_EMPTY);
         }
@@ -68,7 +81,7 @@ public class OrderService {
                 .totalAmount(BigDecimal.ZERO)
                 .build();
 
-        BigDecimal total = BigDecimal.ZERO;
+        BigDecimal subtotal = BigDecimal.ZERO;
         List<OrderItem> items = new ArrayList<>();
 
         for (OrderLineRequest line : lines) {
@@ -78,7 +91,7 @@ public class OrderService {
             }
             BigDecimal unitPrice = sku.getPrice() == null ? BigDecimal.ZERO : sku.getPrice();
             BigDecimal lineTotal = unitPrice.multiply(BigDecimal.valueOf(line.getQuantity()));
-            total = total.add(lineTotal);
+            subtotal = subtotal.add(lineTotal);
 
             items.add(OrderItem.builder()
                     .order(order)
@@ -95,8 +108,17 @@ public class OrderService {
                     .build());
         }
 
+        // Phí ship + giảm giá đều tính TẠI ĐÂY từ giá SKU do product-service trả về.
+        // Client chỉ gửi {skuId, quantity, promotionCode} — mọi con số tiền đều do server chốt,
+        // nên FE có sửa payload cũng không đổi được số tiền phải trả.
+        BigDecimal shippingFee = calculateShippingFee(subtotal);
+        BigDecimal discountAmount = resolvePromotion(order, promotionCode, subtotal);
+
         order.setItems(items);
-        order.setTotalAmount(total);
+        order.setSubtotal(subtotal);
+        order.setShippingFee(shippingFee);
+        order.setDiscountAmount(discountAmount);
+        order.setTotalAmount(finalAmount(subtotal, shippingFee, discountAmount, BigDecimal.ZERO));
         Order saved = orderRepository.save(order);
 
         publishOrderCreated(saved);   // product trừ kho theo (sku, store) qua Kafka
@@ -159,6 +181,7 @@ public class OrderService {
                 .orElseThrow(() -> new AppException(ErrorCode.ORDER_NOT_FOUND));
         if (order.getStatus() == OrderStatus.PENDING) {
             order.setStatus(OrderStatus.PAID);
+            redeemPromotionIfNeeded(order);   // voucher chỉ "đã dùng" sau khi thanh toán thành công
             orderRepository.save(order);
         } else {
             log.info("Bỏ qua set PAID cho orderId={} vì trạng thái hiện tại là {}", orderId, order.getStatus());
@@ -241,8 +264,77 @@ public class OrderService {
         }
         order.setPointsUsed(pointsToUse);
         order.setPointsDiscount(discount);
-        order.setTotalAmount(order.getTotalAmount().subtract(discount));
+        // Tính LẠI từ các thành phần gốc thay vì trừ dần vào totalAmount: trừ dần khiến số tiền
+        // phụ thuộc vào thứ tự/số lần gọi, còn ở đây totalAmount luôn = công thức đầy đủ.
+        order.setTotalAmount(finalAmount(order.getSubtotal(), order.getShippingFee(),
+                order.getDiscountAmount(), discount));
         orderRepository.save(order);
+    }
+
+    /**
+     * Áp mã khuyến mãi: hỏi product-service (nguồn sự thật) rồi ghi id + code vào đơn.
+     * Mã không hợp lệ (hết hạn / chưa bắt đầu / bị khoá / hết lượt / chưa đủ điều kiện)
+     * làm HỎNG luôn việc tạo đơn — thà báo lỗi rõ ràng còn hơn âm thầm tạo đơn giá đầy đủ
+     * trong khi người dùng tin là đã được giảm.
+     */
+    private BigDecimal resolvePromotion(Order order, String promotionCode, BigDecimal subtotal) {
+        if (promotionCode == null || promotionCode.isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        PromotionValidationResponse result;
+        try {
+            result = promotionClient.validate(promotionCode.trim().toUpperCase(), subtotal);
+        } catch (FeignException e) {
+            log.error("Gọi Product Service validate mã khuyến mãi lỗi (code={}): {}", promotionCode, e.getMessage());
+            throw new AppException(ErrorCode.SERVICE_UNAVAILABLE);
+        }
+        if (result == null || !result.isValid()) {
+            throw new AppException(ErrorCode.PROMOTION_INVALID);
+        }
+
+        order.setPromotionId(result.getPromotionId());
+        order.setPromotionCode(result.getCode());
+        BigDecimal discount = result.getDiscountAmount() == null ? BigDecimal.ZERO : result.getDiscountAmount();
+        // Chặn phòng thủ: dù product-service có trả số lạ, giảm giá không bao giờ vượt tiền hàng.
+        return discount.max(BigDecimal.ZERO).min(subtotal);
+    }
+
+    /** Miễn phí ship từ ngưỡng cấu hình; quy tắc nằm ở BE để FE và DB không thể lệch nhau. */
+    private BigDecimal calculateShippingFee(BigDecimal subtotal) {
+        return subtotal.compareTo(freeShippingThreshold) >= 0 ? BigDecimal.ZERO : shippingFee;
+    }
+
+    /** finalAmount = subtotal + ship - giảm giá mã - giảm giá điểm, không bao giờ âm. */
+    private BigDecimal finalAmount(BigDecimal subtotal, BigDecimal shipping,
+                                   BigDecimal discount, BigDecimal pointsDiscount) {
+        return nz(subtotal).add(nz(shipping)).subtract(nz(discount)).subtract(nz(pointsDiscount))
+                .max(BigDecimal.ZERO);
+    }
+
+    private BigDecimal nz(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
+    }
+
+    /**
+     * Ghi nhận lượt dùng mã — CHỈ khi đơn đã thanh toán thành công, và tối đa 1 lần/đơn.
+     * Lỗi ở bước này KHÔNG được làm hỏng việc set PAID: tiền đã vào rồi, đơn phải PAID;
+     * lượt voucher lệch là vấn đề nhỏ hơn nhiều so với đơn đã trả tiền mà kẹt PENDING.
+     */
+    private void redeemPromotionIfNeeded(Order order) {
+        if (order.getPromotionId() == null || order.isPromotionRedeemed()) {
+            return;
+        }
+        try {
+            boolean redeemed = promotionClient.redeem(order.getPromotionId());
+            if (!redeemed) {
+                log.warn("Mã {} đã hết lượt khi ghi nhận cho orderId={} (đơn vẫn giữ mức giảm đã chốt)",
+                        order.getPromotionCode(), order.getId());
+            }
+            order.setPromotionRedeemed(true);
+        } catch (FeignException e) {
+            log.error("Không ghi nhận được lượt dùng mã {} cho orderId={}: {}",
+                    order.getPromotionCode(), order.getId(), e.getMessage());
+        }
     }
 
     private void publishOrderCreated(Order order) {

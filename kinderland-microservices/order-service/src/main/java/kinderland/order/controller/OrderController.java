@@ -29,13 +29,18 @@ public class OrderController {
 
     private final OrderService orderService;
 
-    /** Tạo đơn: POST /orders/create?addressId=&storeId= , body = [{skuId, quantity}]. */
+    /**
+     * Tạo đơn: POST /orders/create?addressId=&storeId=&promotionCode= , body = [{skuId, quantity}].
+     * promotionCode là TUỲ CHỌN; server tự validate mã và tự tính lại toàn bộ số tiền —
+     * client không gửi (và không thể áp đặt) bất kỳ con số tiền nào.
+     */
     @PostMapping("/create")
     public ResponseEntity<BaseResponse<OrderResponse>> create(@RequestParam Long addressId,
                                                               @RequestParam Long storeId,
+                                                              @RequestParam(required = false) String promotionCode,
                                                               @Valid @RequestBody List<OrderLineRequest> items,
                                                               HttpServletRequest req) {
-        OrderResponse response = orderService.createOrder(currentEmail(), addressId, storeId, items);
+        OrderResponse response = orderService.createOrder(currentEmail(), addressId, storeId, items, promotionCode);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(BaseResponse.ok(201, req.getRequestURI(), "Đặt hàng thành công", response));
     }

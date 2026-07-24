@@ -19,5 +19,11 @@ public class PromotionResponse {
     private BigDecimal discountPercent;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    /** Trạng thái + hạn mức sử dụng, để màn quản trị thấy được mã còn bao nhiêu lượt. */
+    private Boolean active;
+    private Integer usageLimit;
+    private Integer usedCount;
+    private BigDecimal minOrderAmount;
+    private BigDecimal maxDiscountAmount;
     private List<PromotionProductResponse> products;
 }

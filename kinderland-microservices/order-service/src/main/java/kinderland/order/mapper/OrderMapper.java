@@ -18,6 +18,7 @@ public interface OrderMapper {
 
     @Mapping(target = "orderId", source = "id")
     @Mapping(target = "orderStatus", source = "status")
+    @Mapping(target = "finalAmount", source = "totalAmount")   // alias: cùng số tiền thực phải trả
     @Mapping(target = "customer.email", source = "accountEmail")
     @Mapping(target = "customer.fullName", source = "accountEmail")
     @Mapping(target = "customer.id", ignore = true)

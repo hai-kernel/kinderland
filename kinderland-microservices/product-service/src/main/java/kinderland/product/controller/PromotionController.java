@@ -7,6 +7,7 @@ import kinderland.product.model.dto.request.AssignPromotionRequest;
 import kinderland.product.model.dto.request.PromotionRequest;
 import kinderland.product.model.dto.response.PromotionProductResponse;
 import kinderland.product.model.dto.response.PromotionResponse;
+import kinderland.product.model.dto.response.PromotionValidationResponse;
 import kinderland.product.service.PromotionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -32,6 +34,23 @@ public class PromotionController {
             HttpServletRequest req) {
         return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK",
                 promotionService.search(keyword, page, size)));
+    }
+
+    /**
+     * Kiểm tra mã khuyến mãi + trả số tiền được giảm cho một subtotal.
+     * FE gọi ngay khi người dùng bấm "Áp dụng" để hiển thị giảm giá thật (không mock).
+     *
+     * PHẢI khai báo TRƯỚC /{id}: Spring ưu tiên path literal hơn path variable, nhưng để
+     * cạnh nhau cho người đọc thấy rõ "validate" không phải là một id.
+     * Đây CHỈ là preview để hiển thị — số tiền cuối cùng do order-service tính lại khi tạo đơn.
+     */
+    @GetMapping("/validate")
+    public ResponseEntity<BaseResponse<PromotionValidationResponse>> validate(
+            @RequestParam String code,
+            @RequestParam(defaultValue = "0") BigDecimal subtotal,
+            HttpServletRequest req) {
+        return ResponseEntity.ok(BaseResponse.ok(200, req.getRequestURI(), "OK",
+                promotionService.validate(code, subtotal)));
     }
 
     @GetMapping("/{id}")

@@ -6,6 +6,7 @@ import kinderland.product.mapper.PromotionMapper;
 import kinderland.product.model.dto.request.PromotionRequest;
 import kinderland.product.model.dto.response.PromotionProductResponse;
 import kinderland.product.model.dto.response.PromotionResponse;
+import kinderland.product.model.dto.response.PromotionValidationResponse;
 import kinderland.product.model.entity.EntityType;
 import kinderland.product.model.entity.Product;
 import kinderland.product.model.entity.Promotion;
@@ -24,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -45,6 +48,8 @@ public class PromotionService {
         }
         Promotion promotion = promotionMapper.toEntity(request);
         promotion.setCode(normalizeCode(request.getCode()));
+        promotion.setActive(request.getActive() == null || request.getActive());
+        promotion.setUsedCount(0);
         return promotionMapper.toResponse(promotionRepository.save(promotion));
     }
 
@@ -56,9 +61,105 @@ public class PromotionService {
                 && promotionRepository.existsByCode(request.getCode().toUpperCase())) {
             throw new AppException(ErrorCode.PROMOTION_CODE_EXISTS);
         }
+        // Các field ràng buộc dưới đây là OPTIONAL trong request. Form quản trị cũ không gửi
+        // chúng, mà MapStruct ghi đè bằng null → mã đang giới hạn 100 lượt sẽ âm thầm thành
+        // không giới hạn chỉ vì admin sửa lại tiêu đề. Giữ giá trị cũ khi request bỏ trống.
+        Boolean previousActive = promotion.isActive();
+        Integer previousUsageLimit = promotion.getUsageLimit();
+        BigDecimal previousMinOrder = promotion.getMinOrderAmount();
+        BigDecimal previousMaxDiscount = promotion.getMaxDiscountAmount();
+
         promotionMapper.updateEntity(request, promotion);
         promotion.setCode(normalizeCode(request.getCode()));
+        promotion.setActive(request.getActive() != null ? request.getActive() : previousActive);
+        if (request.getUsageLimit() == null) promotion.setUsageLimit(previousUsageLimit);
+        if (request.getMinOrderAmount() == null) promotion.setMinOrderAmount(previousMinOrder);
+        if (request.getMaxDiscountAmount() == null) promotion.setMaxDiscountAmount(previousMaxDiscount);
+
         return promotionMapper.toResponse(promotionRepository.save(promotion));
+    }
+
+    /**
+     * NGUỒN SỰ THẬT DUY NHẤT cho việc áp mã: kiểm tra điều kiện + tính số tiền giảm.
+     * FE gọi để hiển thị, order-service gọi để chốt số tiền thật khi tạo đơn — cùng một hàm,
+     * nên số hiển thị và số lưu vào DB không thể lệch nhau.
+     *
+     * Trả về đối tượng có valid=false + message thay vì ném exception, để FE hiện được lý do
+     * cụ thể ("hết lượt", "chưa đạt tối thiểu") ngay tại ô nhập mã.
+     */
+    public PromotionValidationResponse validate(String code, BigDecimal subtotal) {
+        BigDecimal base = subtotal == null || subtotal.signum() < 0 ? BigDecimal.ZERO : subtotal;
+
+        if (code == null || code.isBlank()) {
+            return invalid(ErrorCode.PROMOTION_INVALID.getMessage(), base);
+        }
+        Promotion promotion = promotionRepository.findByCode(normalizeCode(code.trim())).orElse(null);
+        if (promotion == null) {
+            return invalid(ErrorCode.PROMOTION_INVALID.getMessage(), base);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        if (!promotion.isActive()) {
+            return invalid(ErrorCode.PROMOTION_INACTIVE.getMessage(), base);
+        }
+        if (promotion.getStartDate() != null && now.isBefore(promotion.getStartDate())) {
+            return invalid(ErrorCode.PROMOTION_NOT_STARTED.getMessage(), base);
+        }
+        if (promotion.getEndDate() != null && now.isAfter(promotion.getEndDate())) {
+            return invalid(ErrorCode.PROMOTION_EXPIRED.getMessage(), base);
+        }
+        if (promotion.getUsageLimit() != null
+                && promotion.getUsedCount() != null
+                && promotion.getUsedCount() >= promotion.getUsageLimit()) {
+            return invalid(ErrorCode.PROMOTION_USAGE_LIMIT_REACHED.getMessage(), base);
+        }
+        if (promotion.getMinOrderAmount() != null && base.compareTo(promotion.getMinOrderAmount()) < 0) {
+            return invalid(ErrorCode.PROMOTION_MIN_ORDER_NOT_MET.getMessage()
+                    + " (tối thiểu " + promotion.getMinOrderAmount().toBigInteger() + "đ)", base);
+        }
+
+        return PromotionValidationResponse.builder()
+                .valid(true)
+                .promotionId(promotion.getPromotionId())
+                .code(promotion.getCode())
+                .title(promotion.getTitle())
+                .discountPercent(promotion.getDiscountPercent())
+                .subtotal(base)
+                .discountAmount(computeDiscount(promotion, base))
+                .build();
+    }
+
+    /**
+     * Ghi nhận đã dùng 1 lượt. CHỈ được gọi sau khi đơn/giao dịch thành công (order-service
+     * gọi khi nhận PaymentCompletedEvent), không gọi lúc người dùng bấm "Áp dụng".
+     * Trả false khi mã vừa hết lượt do đơn khác — caller quyết định xử lý, KHÔNG huỷ đơn đã trả tiền.
+     */
+    @Transactional
+    public boolean redeem(Long promotionId) {
+        return promotionRepository.incrementUsedCount(promotionId) > 0;
+    }
+
+    /** percent → tiền, kẹp trần maxDiscountAmount và không bao giờ vượt quá subtotal. */
+    private BigDecimal computeDiscount(Promotion promotion, BigDecimal subtotal) {
+        BigDecimal percent = promotion.getDiscountPercent() == null
+                ? BigDecimal.ZERO : promotion.getDiscountPercent();
+        BigDecimal discount = subtotal.multiply(percent)
+                .divide(BigDecimal.valueOf(100), 0, RoundingMode.HALF_UP);
+
+        if (promotion.getMaxDiscountAmount() != null
+                && discount.compareTo(promotion.getMaxDiscountAmount()) > 0) {
+            discount = promotion.getMaxDiscountAmount();
+        }
+        return discount.min(subtotal).max(BigDecimal.ZERO);
+    }
+
+    private PromotionValidationResponse invalid(String message, BigDecimal subtotal) {
+        return PromotionValidationResponse.builder()
+                .valid(false)
+                .message(message)
+                .subtotal(subtotal)
+                .discountAmount(BigDecimal.ZERO)
+                .build();
     }
 
     @Transactional
